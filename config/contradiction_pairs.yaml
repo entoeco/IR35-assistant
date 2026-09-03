@@ -1,0 +1,480 @@
+# =============================================================================
+# CONTRADICTION PAIRS  —  the detector's unit of work
+# =============================================================================
+# Each entry defines one (structured answer, free-text justification) pair from
+# the same IR35 test, and describes what a contradiction between them looks
+# like. Field ids resolve against config/schema.yaml.
+#
+# HOW THIS IS USED
+#   Phase 2 (rules)  : `cues` drive the keyword/rule baseline.
+#   Phase 3 (NLI)    : `premise_template` renders the structured answer into a
+#                      natural-language premise; the free text is the
+#                      hypothesis; the model classifies entailment /
+#                      contradiction / neutral.
+#   Phase 1 (data)   : `plantable_types` bounds which contradiction types the
+#                      generator may inject into this pair, so ground truth is
+#                      never nonsensical.
+#
+# DIRECTIONALITY
+#   `outside_leaning` records which option value points away from employment.
+#   This matters because the cost of a miss is asymmetric: a justification that
+#   quietly undermines an outside-leaning answer is the audit risk HMRC's
+#   "reasonable care" duty is concerned with. Phase 4 reports recall separately
+#   for these.
+#
+# NOT A DETERMINATION. Flags are advisory. See schema.yaml scope constraint.
+# =============================================================================
+
+pairs_version: "0.1.0"
+
+# Rendered premises use {value} for the selected option and {label} for the
+# question text. Kept here, not in code, so wording changes are config edits.
+defaults:
+  premise_template: "The engaging manager stated, in answer to '{label}': {value}"
+  min_free_text_chars: 15      # below this, raise a `non_responsive` anomaly instead
+
+pairs:
+
+  # --- Office holder --------------------------------------------------------
+  - id: p_4_02_office_holder
+    structured: q4_02_office_holder
+    free_text: q4_02_rationale
+    ir35_test: office_holder
+    outside_leaning: "No"
+    contradiction: >-
+      Answer says the worker is not an office holder, but the justification
+      describes a board, trustee, committee-chair, governor, treasurer or
+      directorship role (or vice versa).
+    plantable_types: [direct_negation, scope_qualification]
+    cues:
+      inside_signals: ["board member", "trustee", "governor", "company secretary", "director", "sits on the committee", "chairs the"]
+
+  # --- Substitution ---------------------------------------------------------
+  - id: p_4_03_substitute_sent
+    structured: q4_03_substitute_sent
+    free_text: q4_03_rationale
+    ir35_test: substitution
+    outside_leaning: "Yes - you accepted them"
+    contradiction: >-
+      Answer denies a substitute was ever sent, but the justification recounts
+      an occasion when someone stood in; or answer claims a substitute was
+      accepted while the text describes University staff covering instead.
+    plantable_types: [direct_negation, temporal_inconsistency]
+    cues:
+      inside_signals: ["covered by one of our own", "we asked a colleague from the department", "no one else has ever done it"]
+
+  - id: p_4_04_worker_pays_substitute
+    structured: q4_04_worker_pays_substitute
+    free_text: q4_04_rationale
+    ir35_test: substitution
+    outside_leaning: "Yes"
+    contradiction: >-
+      Answer says the worker pays their own substitute, but the justification
+      says the University paid or would pay the stand-in directly, or engaged
+      them under a separate arrangement.
+    plantable_types: [reimbursement_flip, direct_negation]
+    cues:
+      inside_signals: ["we paid them directly", "raised a separate purchase order", "put through our payroll", "we would cover"]
+
+  - id: p_4_05_right_to_reject
+    structured: q4_05_right_to_reject
+    free_text: q4_05_rationale
+    ir35_test: substitution
+    outside_leaning: "No"
+    priority: high
+    contradiction: >-
+      The canonical case. Answer says the University has no right to reject a
+      substitute (i.e. an unfettered right of substitution exists), but the
+      justification describes vetting, approval, security clearance, a required
+      skill set, or dependence on this specific individual.
+    plantable_types: [named_person_dependency, scope_qualification, hedged_non_support]
+    cues:
+      inside_signals: ["we specifically need this individual", "nobody else has the expertise", "would need to approve", "subject to our vetting", "DBS", "security clearance", "equivalent skills and experience", "we would have to be satisfied"]
+
+  - id: p_4_06_paid_another_person
+    structured: q4_06_paid_another_person
+    free_text: q4_06_rationale
+    ir35_test: substitution
+    outside_leaning: "Yes"
+    contradiction: >-
+      Answer says the worker paid someone else for a significant portion, but
+      the justification describes an unpaid helper, a University employee, or a
+      trivial share of the work.
+    plantable_types: [reimbursement_flip, scope_qualification]
+    cues:
+      inside_signals: ["unpaid", "voluntary", "a member of our team assisted", "a very small part"]
+
+  - id: p_4_07_would_pay_substitute
+    structured: q4_07_would_pay_substitute
+    free_text: q4_07_rationale
+    ir35_test: substitution
+    outside_leaning: "Yes"
+    contradiction: >-
+      Answer says the worker would bear the substitute's cost, but the
+      justification says the University would meet it or the rate would simply
+      transfer.
+    plantable_types: [reimbursement_flip, direct_negation]
+
+  # --- Control --------------------------------------------------------------
+  - id: p_4_08_moved_from_task
+    structured: q4_08_moved_from_task
+    free_text: q4_08_rationale
+    ir35_test: control
+    outside_leaning: "No - that would require a new contract or formal working arrangement"
+    contradiction: >-
+      Answer says reassignment would need a new contract or the worker's
+      agreement, but the justification describes routine redeployment as
+      departmental priorities change.
+    plantable_types: [direct_negation, scope_qualification]
+    cues:
+      inside_signals: ["as priorities change", "we would move them onto", "whatever is needed that week", "flex them across"]
+
+  - id: p_4_09_decide_how
+    structured: q4_09_decide_how
+    free_text: q4_09_rationale
+    ir35_test: control
+    outside_leaning: "No - the worker solely decides"
+    priority: high
+    contradiction: >-
+      Answer says the worker decides method (or that control is irrelevant
+      because the work is highly skilled), but the justification describes
+      supervision, mandated procedures, sign-off gates, or working to a
+      University template.
+    plantable_types: [scope_qualification, direct_negation, hedged_non_support]
+    cues:
+      inside_signals: ["supervised by", "reports to", "must follow our", "standard operating procedure", "sign off each stage", "our house style", "line manager"]
+
+  - id: p_4_10_decide_schedule
+    structured: q4_10_decide_schedule
+    free_text: q4_10_rationale
+    ir35_test: control
+    outside_leaning: "No - the work is based on agreed deadlines"
+    priority: high
+    contradiction: >-
+      Answer says hours are the worker's own or deadline-driven, but the
+      justification specifies fixed on-site hours, a rota, core hours, or
+      attendance at standing meetings.
+    plantable_types: [direct_negation, scope_qualification]
+    cues:
+      inside_signals: ["9am to 5pm", "Monday to Friday", "core hours", "rota", "must attend the weekly", "term-time timetable", "clock in"]
+
+  - id: p_4_11_decide_where
+    structured: q4_11_decide_where
+    free_text: q4_11_rationale
+    ir35_test: control
+    outside_leaning: "No - the worker decides"
+    contradiction: >-
+      Answer says the worker chooses the location, but the justification
+      requires attendance at a named campus, lab or building, or use of
+      University equipment that cannot leave site.
+    plantable_types: [direct_negation, scope_qualification]
+    cues:
+      inside_signals: ["must be on campus", "Falmer", "in the lab", "our premises", "cannot be done remotely", "desk in the department"]
+
+  # --- Financial risk -------------------------------------------------------
+  - id: p_4_12_buys_equipment
+    structured: q4_12_buys_equipment
+    free_text: q4_12_rationale
+    ir35_test: financial_risk
+    outside_leaning: "Yes"
+    contradiction: >-
+      Answer claims the worker funds equipment, but the justification says the
+      University provides it, or cites only items the form explicitly excludes
+      (laptop, tablet, phone, commuting).
+    plantable_types: [reimbursement_flip, category_mismatch]
+    cues:
+      inside_signals: ["we provide", "University laptop", "issued with", "uses our equipment", "we will supply"]
+
+  - id: p_4_13_vehicle_costs
+    structured: q4_13_vehicle_costs
+    free_text: q4_13_rationale
+    ir35_test: financial_risk
+    outside_leaning: "Yes"
+    contradiction: >-
+      Answer claims vehicle cost is borne by the worker, but the justification
+      describes reimbursed mileage or ordinary commuting, both of which the
+      form's help text excludes.
+    plantable_types: [reimbursement_flip, category_mismatch]
+    cues:
+      inside_signals: ["claims mileage", "expenses claim", "reimbursed at", "45p per mile", "travel to campus", "commute"]
+
+  - id: p_4_14_materials_unreimbursed
+    structured: q4_14_materials_unreimbursed
+    free_text: q4_14_rationale
+    ir35_test: financial_risk
+    outside_leaning: "Yes"
+    priority: high
+    contradiction: >-
+      Answer says materials are unreimbursed, but the justification says costs
+      are recharged, invoiced on to the University, or claimed back on receipt.
+    plantable_types: [reimbursement_flip, direct_negation]
+    cues:
+      inside_signals: ["recharged", "reimbursed", "on production of receipts", "invoiced back to us", "we cover consumables"]
+
+  - id: p_4_15_other_costs
+    structured: q4_15_other_costs
+    free_text: q4_15_rationale
+    ir35_test: financial_risk
+    outside_leaning: "Yes"
+    contradiction: >-
+      Answer claims other up-front costs, but the justification says the
+      University books and pays travel, accommodation or venue hire directly.
+    plantable_types: [reimbursement_flip, direct_negation]
+
+  - id: p_4_16_payment_basis
+    structured: q4_16_payment_basis
+    free_text: q4_16_rationale
+    ir35_test: financial_risk
+    outside_leaning: "A fixed price for the project"
+    priority: high
+    contradiction: >-
+      Answer selects one payment category, but the justification describes a
+      different one — most commonly "fixed price for the project" alongside a
+      narrative of monthly invoicing at a day rate, or vice versa.
+    plantable_types: [category_mismatch, direct_negation]
+    cues:
+      rate_pattern: '\\b(day|daily|hourly|per hour|per day)\\s*rate\\b|£\\s?\\d[\\d,]*\\s*(per|/)\\s*(hour|day|week)'
+
+  - id: p_4_17_put_right
+    structured: q4_17_put_right
+    free_text: q4_17_rationale
+    ir35_test: financial_risk
+    outside_leaning: "Yes - unpaid & they would have extra costs that the University would not pay for"
+    contradiction: >-
+      Answer claims rectification at the worker's own unpaid cost, but the
+      justification says corrections happen in normal working time at the usual
+      rate, or that the University would absorb the cost.
+    plantable_types: [reimbursement_flip, category_mismatch, hedged_non_support]
+    cues:
+      inside_signals: ["in their usual hours", "at their normal rate", "we would pay for the time", "part of the ongoing work"]
+
+  # --- Part and parcel ------------------------------------------------------
+  - id: p_4_18_benefits
+    structured: q4_18_benefits
+    free_text: q4_18_rationale
+    ir35_test: part_and_parcel
+    outside_leaning: "No"
+    contradiction: >-
+      Answer says no benefits, but the justification lists staff-card
+      entitlements — gym, library, staff discount, occupational health, parking
+      permit. Genuinely borderline: some access is incidental to site safety
+      rather than a benefit. Good source of subtlety-level 3 cases.
+    plantable_types: [scope_qualification, hedged_non_support]
+    cues:
+      inside_signals: ["staff card", "gym", "library access", "staff discount", "parking permit", "occupational health"]
+
+  - id: p_4_19_manages_staff
+    structured: q4_19_manages_staff
+    free_text: q4_19_rationale
+    ir35_test: part_and_parcel
+    outside_leaning: "No"
+    contradiction: >-
+      Answer says no responsibility for University staff, but the justification
+      describes line-managing, supervising, appraising or approving timesheets
+      for University employees or students.
+    plantable_types: [direct_negation, scope_qualification]
+    cues:
+      inside_signals: ["line manages", "supervises two", "approves timesheets", "conducts appraisals", "manages the team"]
+
+  - id: p_4_20_identifies_as
+    structured: q4_20_identifies_as
+    free_text: q4_20_rationale
+    ir35_test: part_and_parcel
+    outside_leaning: "They work for their own business"
+    priority: high
+    contradiction: >-
+      Answer says the worker presents as their own business, but the
+      justification describes a sussex.ac.uk address, a University email
+      signature, a staff badge, or introduction as a member of the department.
+    plantable_types: [category_mismatch, direct_negation]
+    cues:
+      inside_signals: ["sussex.ac.uk", "University email", "staff badge", "introduced as a member of", "on our staff list", "in the department directory"]
+
+  # --- In business on own account ------------------------------------------
+  - id: p_4_21_exclusivity_clause
+    structured: q4_21_exclusivity_clause
+    free_text: q4_21_rationale
+    ir35_test: business_on_own_account
+    outside_leaning: "No"
+    contradiction: >-
+      Answer says no restriction on other work, but the justification describes
+      an exclusivity clause, a non-compete, or a bar on similar work during the
+      engagement.
+    plantable_types: [direct_negation, scope_qualification]
+    cues:
+      inside_signals: ["exclusivity", "non-compete", "cannot work for", "restricted from", "for the duration of the contract they may not"]
+
+  - id: p_4_22_permission_required
+    structured: q4_22_permission_required
+    free_text: q4_22_rationale
+    ir35_test: business_on_own_account
+    outside_leaning: "No"
+    contradiction: >-
+      Answer says no permission needed, but the justification describes
+      notification to, or sign-off from, a Head of School or line manager —
+      or a conflict-of-interest declaration that functions as approval.
+    plantable_types: [scope_qualification, hedged_non_support]
+    cues:
+      inside_signals: ["must notify", "sign-off from", "declare any", "seek approval", "let us know first"]
+
+  - id: p_4_23_ownership_rights
+    structured: q4_23_ownership_rights
+    free_text: q4_23_rationale
+    ir35_test: business_on_own_account
+    outside_leaning: "Yes"
+    contradiction: >-
+      Answer says no ownership rights arise, but the justification discusses
+      copyright in materials, patents, or image rights in recorded lectures.
+    plantable_types: [direct_negation]
+
+  - id: p_4_24_rights_to_university
+    structured: q4_24_rights_to_university
+    free_text: q4_24_rationale
+    ir35_test: business_on_own_account
+    outside_leaning: "No"
+    contradiction: >-
+      Answer says rights vest in the University, but the justification says the
+      worker retains copyright and grants a licence (or the reverse).
+    plantable_types: [direct_negation, scope_qualification]
+    cues:
+      inside_signals: ["vest in the University", "we own the", "assigned to us"]
+      outside_signals: ["retains copyright", "licenses it to us", "remains their IP"]
+
+  - id: p_4_25_option_to_buy_rights
+    structured: q4_25_option_to_buy_rights
+    free_text: q4_25_rationale
+    ir35_test: business_on_own_account
+    outside_leaning: "Yes"
+    contradiction: >-
+      Answer denies any buy-out option, but the justification names a separate
+      fee or figure for acquiring full rights.
+    plantable_types: [direct_negation, category_mismatch]
+
+  - id: p_4_30_majority_of_time
+    structured: q4_30_majority_of_time
+    free_text: q4_30_rationale
+    ir35_test: business_on_own_account
+    outside_leaning: "No"
+    priority: high
+    contradiction: >-
+      Answer says this is not the majority of the worker's time, but the
+      justification describes full-time or near-full-time commitment, or a
+      day count that exceeds a normal working pattern.
+    plantable_types: [direct_negation, category_mismatch]
+    cues:
+      inside_signals: ["full-time", "five days a week", "0.8 FTE", "four days a week", "their main engagement"]
+
+  - id: p_4_31_other_clients
+    structured: q4_31_other_clients
+    free_text: q4_31_rationale
+    ir35_test: business_on_own_account
+    outside_leaning: "Yes"
+    priority: high
+    contradiction: >-
+      Answer says the worker has had other similar self-employed clients, but
+      the justification says this is their only client, that they have just
+      left employment, or that they have no other current work.
+    plantable_types: [direct_negation, temporal_inconsistency, hedged_non_support]
+    cues:
+      inside_signals: ["we are their only client", "only work they do", "left their previous employer", "recently retired from", "no other clients at present"]
+
+  # --- Mutuality of obligation ---------------------------------------------
+  - id: p_4_26_previous_contract
+    structured: q4_26_previous_contract
+    free_text: q4_26_rationale
+    ir35_test: mutuality_of_obligation
+    outside_leaning: "No"
+    contradiction: >-
+      Answer denies any prior contract, but the justification refers to earlier
+      years, a repeat engagement, or "as in previous terms".
+    plantable_types: [direct_negation, temporal_inconsistency]
+    cues:
+      inside_signals: ["last year", "for the past three years", "as before", "renewed", "each academic year"]
+
+  - id: p_4_27_first_in_series
+    structured: q4_27_first_in_series
+    free_text: q4_27_rationale
+    ir35_test: mutuality_of_obligation
+    outside_leaning: "Yes"
+    contradiction: >-
+      Answer says this is the first of a series, but the justification
+      describes it as a further extension or the latest of several.
+    plantable_types: [temporal_inconsistency, direct_negation]
+
+  - id: p_4_28_starts_immediately_after
+    structured: q4_28_starts_immediately_after
+    free_text: q4_28_rationale
+    ir35_test: mutuality_of_obligation
+    outside_leaning: "No"
+    contradiction: >-
+      Answer denies back-to-back continuity, but the justification describes a
+      seamless roll-on from a contract that has just ended, or gives dates that
+      abut.
+    plantable_types: [temporal_inconsistency, direct_negation]
+    cues:
+      inside_signals: ["continues from", "seamlessly", "the day after", "no break in"]
+
+  - id: p_4_29_extendable
+    structured: q4_29_extendable
+    free_text: q4_29_rationale
+    ir35_test: mutuality_of_obligation
+    outside_leaning: "No"
+    contradiction: >-
+      Answer says the contract cannot be extended, but the justification
+      mentions a possible or expected extension, renewal option or break clause
+      with roll-over.
+    plantable_types: [direct_negation, hedged_non_support]
+    cues:
+      inside_signals: ["may be extended", "option to renew", "if funding allows we would", "likely to continue"]
+
+  # --- Contract basis -------------------------------------------------------
+  - id: p_1_08_contract_form
+    structured: q1_08_contract_in_place
+    free_text: q1_08_contract_form
+    ir35_test: contract_basis
+    outside_leaning: "Yes - contract already in place and provided with ESQ"
+    contradiction: >-
+      Answer says a contract is already in place and attached, but the
+      justification describes an unfinished negotiation, a verbal understanding,
+      or a document still with Legal.
+    plantable_types: [direct_negation, hedged_non_support]
+
+# =============================================================================
+# CROSS-FIELD CHECKS — a second detector class, structured-vs-structured or
+# free-text-vs-many. Not (premise, hypothesis) pairs, so they are handled by a
+# rule engine rather than by the NLI model. Listed here because they are part
+# of the same "reasonable care" surface.
+# =============================================================================
+cross_field_checks:
+  - id: x_route_section2
+    description: "q2_01 = 'No' but company name or registration number is populated."
+    severity: medium
+  - id: x_route_substitution
+    description: >-
+      The 4.3 -> 4.4/4.5/4.6/4.7 routing was not followed: a question that the
+      selected route skips has been answered, or a question the route requires
+      has been left blank.
+    severity: medium
+  - id: x_no_financial_risk_but_fixed_price
+    description: >-
+      q4_16 = 'A fixed price for the project' while q4_12, q4_13, q4_14, q4_15
+      are all 'No' and q4_17 is a 'No' option — a fixed-price contractor
+      carrying no risk of any kind. Not an error, but worth a reviewer's eye.
+    severity: low
+  - id: x_started_but_not_applicable
+    description: "q4_01 = 'Yes' (work started) but q4_03 = 'Not applicable - work has not started'."
+    severity: high
+  - id: x_duties_vs_control
+    description: >-
+      The document-level duties narrative (q4_00_duties_narrative) describes
+      supervision, fixed hours or integration that conflicts with the Section 4
+      control answers taken together.
+    severity: medium
+    method: document_level_nli
+  - id: x_missing_justification
+    description: >-
+      A structured answer is present but its rationale box is blank or below
+      `min_free_text_chars`. The form states an ESQ will be rejected if not all
+      fields are completed, so this is a completeness flag rather than a
+      contradiction.
+    severity: high

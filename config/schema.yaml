@@ -1,0 +1,1045 @@
+# =============================================================================
+# ESQ DATA CONTRACT  —  Employment Status Questionnaire (University of Sussex)
+# =============================================================================
+# Source template : "Copy of Employment Status Questionnaire ESQ.xlsx"
+#                   (single sheet, "Employment Status Questionnaire",
+#                    footer states "ESQ form updated June 2026")
+# Derived by      : Phase 0 schema extraction, 2026-09-03
+#
+# PURPOSE
+#   This file is the single source of truth for field names, value domains,
+#   routing, PII classification and IR35 test mapping. NOTHING in src/ may
+#   hardcode a column name, cell reference or option string. To point this
+#   system at the live form, edit this file only.
+#
+# SCOPE CONSTRAINT (do not remove)
+#   This system is DECISION SUPPORT. It surfaces inconsistencies between a
+#   manager's structured answer and their own free-text justification for the
+#   same IR35 test, and offers an indicative status signal. It does NOT issue,
+#   replace or override a Status Determination Statement. Under UK GDPR
+#   Art.22 an employment status determination has legal effect, so a solely
+#   automated decision is out of scope BY DESIGN. A human reviewer in the
+#   IR35 team remains the decision-maker for every record.
+#
+# PROVENANCE NOTE
+#   `cell` values record where each item sits in the June 2026 template. They
+#   are documentation and a hint for the .xlsx ingest adapter. They are NOT a
+#   stable contract — if the form is re-laid-out, update `cell` and nothing
+#   else needs to change.
+# =============================================================================
+
+schema_version: "0.1.0"
+form_name: "Employment Status Questionnaire (ESQ)"
+form_version: "2026-06"
+form_sheet: "Employment Status Questionnaire"
+submission_route: "IR35info@sussex.ac.uk"
+
+# -----------------------------------------------------------------------------
+# IR35 test vocabulary.
+# These are the buckets a contradiction is reported against. They follow the
+# CEST/case-law structure rather than the form's section numbering, because a
+# manager reasons about "substitution" not about "question 4.5".
+# -----------------------------------------------------------------------------
+ir35_tests:
+  office_holder:
+    label: "Office holder"
+    note: "Determinative on its own — an office holder is inside IR35 regardless of the other tests."
+  substitution:
+    label: "Personal service / right of substitution"
+    note: "An unfettered right to send a substitute points outside. A named-individual dependency points inside."
+  control:
+    label: "Control (what / how / when / where)"
+    note: "Engager control over method, schedule, location or task assignment points inside."
+  financial_risk:
+    label: "Financial risk and basis of payment"
+    note: "Unreimbursed cost, capital outlay, fixed price and rectification at own cost point outside."
+  part_and_parcel:
+    label: "Part and parcel / integration"
+    note: "Employee benefits, managing University staff, and presenting as University staff point inside."
+  business_on_own_account:
+    label: "In business on own account / exclusivity / IP"
+    note: "Other clients, no exclusivity, and retained IP point outside."
+  mutuality_of_obligation:
+    label: "Mutuality of obligation / continuity"
+    note: "Rolling, back-to-back or extendable contracts point inside."
+  contract_basis:
+    label: "Contractual and engagement metadata"
+    note: "Context, not a test in itself. Used for cross-field validation and cohort analysis."
+
+# -----------------------------------------------------------------------------
+# PII classification. Consumed by src/deidentify.
+#   direct_identifier  -> always replaced with a surrogate token
+#   quasi_identifier   -> replaced or generalised depending on config
+#   sensitive_commercial -> day rates, fees, company numbers: masked
+#   none               -> passes through
+# Free-text fields are `none` at field level but ALWAYS go through entity-level
+# scrubbing, because a manager can and does type a name into a justification box.
+# -----------------------------------------------------------------------------
+pii_classes: [direct_identifier, quasi_identifier, sensitive_commercial, none]
+
+# -----------------------------------------------------------------------------
+# Contradiction-type taxonomy. Phase 1 ground truth labels use these.
+# -----------------------------------------------------------------------------
+contradiction_types:
+  direct_negation:      "Free text asserts the opposite of the selected option in plain terms."
+  scope_qualification:  "Option is absolute; text attaches a condition, veto or approval step that guts it."
+  named_person_dependency: "Option asserts fungibility; text ties the work to one named or uniquely-skilled individual."
+  reimbursement_flip:   "Option claims an unreimbursed cost; text reveals the University pays or refunds it."
+  category_mismatch:    "Text describes a payment/identification basis in a different category from the one selected."
+  temporal_inconsistency: "Text describes a history or continuity that the selected option denies (or vice versa)."
+  hedged_non_support:   "Text is so hedged or non-committal that it fails to support the definite option chosen."
+  non_responsive:       "Text does not address the question at all (anomaly, not strictly a contradiction)."
+
+subtlety_levels: [1, 2, 3]   # 1 = blatant, 2 = requires reading, 3 = requires domain knowledge
+
+# =============================================================================
+# FIELDS
+# =============================================================================
+fields:
+
+  # --- Section 1: Worker details -------------------------------------------
+  # Every field here is PII. On synthetic data these carry obvious placeholder
+  # values; on real data they are the deidentifier's primary target.
+  - id: q1_01_title
+    form_ref: "1.1"
+    section: "1. Worker Details"
+    label: "Title"
+    type: metadata
+    cell: E14
+    pii_class: quasi_identifier
+
+  - id: q1_02_first_name
+    form_ref: "1.2"
+    section: "1. Worker Details"
+    label: "First Name"
+    type: metadata
+    cell: E16
+    pii_class: direct_identifier
+
+  - id: q1_03_surname
+    form_ref: "1.3"
+    section: "1. Worker Details"
+    label: "Surname"
+    type: metadata
+    cell: E18
+    pii_class: direct_identifier
+
+  - id: q1_04_address_line1
+    form_ref: "1.4"
+    section: "1. Worker Details"
+    label: "Registered Address — 1st line"
+    type: metadata
+    cell: E20
+    pii_class: direct_identifier
+  - id: q1_04_address_line2
+    form_ref: "1.4"
+    section: "1. Worker Details"
+    label: "Registered Address — 2nd line"
+    type: metadata
+    cell: E21
+    pii_class: direct_identifier
+  - id: q1_04_address_line3
+    form_ref: "1.4"
+    section: "1. Worker Details"
+    label: "Registered Address — 3rd line"
+    type: metadata
+    cell: E22
+    pii_class: direct_identifier
+  - id: q1_04_postcode
+    form_ref: "1.4"
+    section: "1. Worker Details"
+    label: "Registered Address — Post code"
+    type: metadata
+    cell: E23
+    pii_class: direct_identifier
+
+  - id: q1_05_telephone
+    form_ref: "1.5"
+    section: "1. Worker Details"
+    label: "Contact Telephone number"
+    type: metadata
+    cell: E25
+    pii_class: direct_identifier
+
+  - id: q1_06_internet_presence
+    form_ref: "1.6"
+    section: "1. Worker Details"
+    label: "Internet Presence"
+    help_text: "Eg LinkedIn or website address"
+    type: metadata
+    cell: E27
+    pii_class: direct_identifier
+
+  - id: q1_07_engagement_from
+    form_ref: "1.7"
+    section: "1. Worker Details"
+    label: "Length of Engagement — From"
+    type: metadata
+    value_type: date
+    cell: G30
+    pii_class: quasi_identifier
+    ir35_test: contract_basis
+  - id: q1_07_engagement_to
+    form_ref: "1.7"
+    section: "1. Worker Details"
+    label: "Length of Engagement — To"
+    type: metadata
+    value_type: date
+    cell: J30
+    pii_class: quasi_identifier
+    ir35_test: contract_basis
+
+  - id: q1_08_contract_in_place
+    form_ref: "1.8"
+    section: "1. Worker Details"
+    label: "Is there, or will there be, a contract in place?"
+    help_text: >-
+      A contract can be written, verbal, implied, or a combination of these.
+      You MUST provide evidence of the contract along with the ESQ.
+    type: structured
+    cell: F32
+    ir35_test: contract_basis
+    pii_class: none
+    value_domain:
+      - "Yes - contract already in place and provided with ESQ"
+      - "Yes - contract not yet in place and will be provided later"
+      - "No"
+
+  - id: q1_08_contract_form
+    form_ref: "1.8a"
+    section: "1. Worker Details"
+    label: "Please give details of what form the contract takes, eg. email exchange, formal letter, etc."
+    type: free_text
+    cell: F35
+    justification_for: q1_08_contract_in_place
+    ir35_test: contract_basis
+    pii_class: none
+
+  # --- Section 2: Company status -------------------------------------------
+  - id: q2_01_via_third_party
+    form_ref: "2.1"
+    section: "2. Company Status"
+    label: >-
+      Is the Engagement of work through a third party such as a company in the
+      worker's name, limited company, partnership, agency, or unincorporated body?
+    type: structured
+    cell: I39
+    ir35_test: contract_basis
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    routing:
+      "Yes": "complete 2.2-2.5 then go to Section 4"
+      "No": "skip Section 2, go to Section 3"
+
+  - id: q2_02_company_name
+    form_ref: "2.2"
+    section: "2. Company Status"
+    label: "Company Name"
+    type: metadata
+    cell: G44
+    pii_class: direct_identifier
+    required_when: "q2_01_via_third_party == 'Yes'"
+
+  - id: q2_03_company_number
+    form_ref: "2.3"
+    section: "2. Company Status"
+    label: "Reg Company Number"
+    type: metadata
+    cell: G46
+    pii_class: sensitive_commercial
+    required_when: "q2_01_via_third_party == 'Yes'"
+
+  - id: q2_04_entity_relationship
+    form_ref: "2.4"
+    section: "2. Company Status"
+    label: "What is the relationship between the contracting entity and the worker?"
+    help_text: "Eg, is the worker the owner of the company, a director, employee, significant shareholder, etc"
+    type: free_text
+    cell: G48
+    ir35_test: contract_basis
+    pii_class: none
+    required_when: "q2_01_via_third_party == 'Yes'"
+
+  - id: q2_05_years_in_business
+    form_ref: "2.5"
+    section: "2. Company Status"
+    label: "If the company is in the worker's own name, how long have they been in business?"
+    type: structured
+    value_type: free_numeric_or_text
+    cell: G51
+    ir35_test: business_on_own_account
+    pii_class: none
+    required_when: "q2_01_via_third_party == 'Yes'"
+    note: "No data validation on the template — accepts free text. Treated as semi-structured."
+
+  # --- Section 3: Worker status --------------------------------------------
+  - id: q3_01_engaged_directly
+    form_ref: "3.1"
+    section: "3. Worker Status"
+    label: >-
+      Is the worker being engaged directly (i.e., in their own name, not through
+      a company) by the University?
+    type: structured
+    cell: G57
+    ir35_test: contract_basis
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    required_when: "q2_01_via_third_party == 'No'"
+
+  # --- Section 4 preamble ---------------------------------------------------
+  - id: q4_00_role_title
+    form_ref: "4.0a"
+    section: "4. Employment Status Questions"
+    label: "Contract or role title"
+    type: metadata
+    cell: F62
+    ir35_test: contract_basis
+    pii_class: none
+
+  - id: q4_00_duties_narrative
+    form_ref: "4.0b"
+    section: "4. Employment Status Questions"
+    label: >-
+      Description of Duties of Engagement (Please provide a detailed/outcome
+      focussed narrative about this engagement).
+    type: free_text
+    cell: F64            # merged F64:J73 — the longest free-text box on the form
+    ir35_test: contract_basis
+    pii_class: none
+    scope: document_level
+    note: >-
+      Not the justification for any single structured answer. It is a
+      document-level premise that can contradict MANY structured answers at
+      once, so it is handled by a separate global-consistency detector rather
+      than by the paired detector.
+
+  # --- Section 4: the 31 status questions -----------------------------------
+  - id: q4_01_already_started
+    form_ref: "4.1"
+    section: "4. Employment Status Questions"
+    label: "Has the worker already started working for the University of Sussex?"
+    type: structured
+    cell: I75
+    ir35_test: contract_basis
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    has_justification: false     # the ONLY section-4 question with no rationale box
+    routing:
+      note: "Gates whether 4.3 can be anything other than 'Not applicable - work has not started'."
+
+  - id: q4_02_office_holder
+    form_ref: "4.2"
+    section: "4. Employment Status Questions"
+    label: "Will the worker be an office holder?"
+    help_text: >-
+      This can include being a board member, treasurer, trustee, company
+      secretary or company director. It does not refer to physical office space.
+    type: structured
+    cell: I77
+    ir35_test: office_holder
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_02_rationale
+    form_ref: "4.2r"
+    label: "Please explain the reason/rationale for your answer in 4.2"
+    type: free_text
+    cell: I79
+    justification_for: q4_02_office_holder
+    ir35_test: office_holder
+    pii_class: none
+
+  - id: q4_03_substitute_sent
+    form_ref: "4.3"
+    section: "4. Employment Status Questions"
+    label: >-
+      If the work has already started, has the worker's business sent someone
+      else (a substitute) to do the work instead of them during this engagement?
+    type: structured
+    cell: I83
+    ir35_test: substitution
+    pii_class: none
+    value_domain:
+      - "Yes - you accepted them"
+      - "Yes - you did not accept them"
+      - "No - they have not sent a substitute"
+      - "Not applicable - work has not started"
+    routing:
+      "Yes - you accepted them": q4_04_worker_pays_substitute
+      "Yes - you did not accept them": q4_06_paid_another_person
+      "No - they have not sent a substitute": q4_05_right_to_reject
+      "Not applicable - work has not started": q4_05_right_to_reject
+  - id: q4_03_rationale
+    form_ref: "4.3r"
+    label: "Please explain the reason/rationale for your answer in 4.3"
+    type: free_text
+    cell: I85
+    justification_for: q4_03_substitute_sent
+    ir35_test: substitution
+    pii_class: none
+
+  - id: q4_04_worker_pays_substitute
+    form_ref: "4.4"
+    section: "4. Employment Status Questions"
+    label: "Will the worker pay their substitute?"
+    type: structured
+    cell: I90
+    ir35_test: substitution
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    routing:
+      "Yes": q4_08_moved_from_task
+      "No": q4_05_right_to_reject
+  - id: q4_04_rationale
+    form_ref: "4.4r"
+    label: "Please explain the reason/rationale for your answer in 4.4"
+    type: free_text
+    cell: I92
+    justification_for: q4_04_worker_pays_substitute
+    ir35_test: substitution
+    pii_class: none
+
+  - id: q4_05_right_to_reject
+    form_ref: "4.5"
+    section: "4. Employment Status Questions"
+    label: "Do you have the right to reject a substitute?"
+    type: structured
+    cell: I97
+    ir35_test: substitution
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    routing:
+      "Yes": q4_06_paid_another_person
+      "No": q4_07_would_pay_substitute
+  - id: q4_05_rationale
+    form_ref: "4.5r"
+    label: "Please explain the reason/rationale for your answer in 4.5"
+    type: free_text
+    cell: I99
+    justification_for: q4_05_right_to_reject
+    ir35_test: substitution
+    pii_class: none
+
+  - id: q4_06_paid_another_person
+    form_ref: "4.6"
+    section: "4. Employment Status Questions"
+    label: "Has the worker paid another person to do a significant portion of the work?"
+    type: structured
+    cell: I104
+    ir35_test: substitution
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    routing: {"Yes": q4_08_moved_from_task, "No": q4_08_moved_from_task}
+  - id: q4_06_rationale
+    form_ref: "4.6r"
+    label: "Please explain the reason/rationale for your answer in 4.6"
+    type: free_text
+    cell: I106
+    justification_for: q4_06_paid_another_person
+    ir35_test: substitution
+    pii_class: none
+
+  - id: q4_07_would_pay_substitute
+    form_ref: "4.7"
+    section: "4. Employment Status Questions"
+    label: "If a substitute is provided, would the worker have to pay them?"
+    type: structured
+    cell: I111
+    ir35_test: substitution
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    routing: {"Yes": q4_08_moved_from_task, "No": q4_06_paid_another_person}
+  - id: q4_07_rationale
+    form_ref: "4.7r"
+    label: "Please explain the reason/rationale for your answer in 4.7"
+    type: free_text
+    cell: I113
+    justification_for: q4_07_would_pay_substitute
+    ir35_test: substitution
+    pii_class: none
+
+  - id: q4_08_moved_from_task
+    form_ref: "4.8"
+    section: "4. Employment Status Questions"
+    label: >-
+      Within the terms of the engagement, can the worker be moved from the task
+      they originally agreed to?
+    type: structured
+    cell: I118
+    ir35_test: control
+    pii_class: none
+    value_domain:
+      - "Yes"
+      - "No - they would have to agree"
+      - "No - that would require a new contract or formal working arrangement"
+  - id: q4_08_rationale
+    form_ref: "4.8r"
+    label: "Please explain the reason/rationale for your answer in 4.8"
+    type: free_text
+    cell: I120
+    justification_for: q4_08_moved_from_task
+    ir35_test: control
+    pii_class: none
+
+  - id: q4_09_decide_how
+    form_ref: "4.9"
+    section: "4. Employment Status Questions"
+    label: "Can you (the engager) decide how the work is done?"
+    type: structured
+    cell: I125
+    ir35_test: control
+    pii_class: none
+    value_domain:
+      - "Yes"
+      - "No - the worker solely decides"
+      - "No - the University and the worker agree together"
+      - "Not Relevant - it is highly skilled work"
+  - id: q4_09_rationale
+    form_ref: "4.9r"
+    label: "Please explain the reason/rationale for your answer in 4.9"
+    type: free_text
+    cell: I127
+    justification_for: q4_09_decide_how
+    ir35_test: control
+    pii_class: none
+
+  - id: q4_10_decide_schedule
+    form_ref: "4.10"
+    section: "4. Employment Status Questions"
+    label: "Can you (the engager) decide the schedule of working hours?"
+    type: structured
+    cell: I132
+    ir35_test: control
+    pii_class: none
+    value_domain:
+      - "Yes"
+      - "No - the worker solely decides"
+      - "No - the engager and the worker agree"
+      - "No - the work is based on agreed deadlines"
+    note: "Template cell B132 reads '4.1' — Excel dropped the trailing zero of 4.10. See docs/phase0_field_inventory.md."
+  - id: q4_10_rationale
+    form_ref: "4.10r"
+    label: "Please explain the reason/rationale for your answer in 4.10"
+    type: free_text
+    cell: I134
+    justification_for: q4_10_decide_schedule
+    ir35_test: control
+    pii_class: none
+
+  - id: q4_11_decide_where
+    form_ref: "4.11"
+    section: "4. Employment Status Questions"
+    label: "Can you (the engager) choose where the worker does the work?"
+    type: structured
+    cell: I139
+    ir35_test: control
+    pii_class: none
+    value_domain:
+      - "Yes"
+      - "No - the worker decides"
+      - "No - the task sets the location"
+      - "No - some work has to be done in an agreed location and some can be done at the workers choice"
+  - id: q4_11_rationale
+    form_ref: "4.11r"
+    label: "Please explain the reason/rationale for your answer in 4.11"
+    type: free_text
+    cell: I141
+    justification_for: q4_11_decide_where
+    ir35_test: control
+    pii_class: none
+
+  - id: q4_12_buys_equipment
+    form_ref: "4.12"
+    section: "4. Employment Status Questions"
+    label: "Based upon this engagement, does the worker have to buy equipment before they are paid?"
+    help_text: >-
+      This can include heavy machinery & high-cost specialist equipment used for
+      this work but doesn't include commuting or personal vehicle costs or
+      tablets, computers or mobile phones. This would be 'yes' if the individual
+      already owns the equipment needed for the work.
+    type: structured
+    cell: I146
+    ir35_test: financial_risk
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_12_rationale
+    form_ref: "4.12r"
+    label: "Please explain the reason/rationale for your answer in 4.12"
+    type: free_text
+    cell: I149
+    justification_for: q4_12_buys_equipment
+    ir35_test: financial_risk
+    pii_class: none
+
+  - id: q4_13_vehicle_costs
+    form_ref: "4.13"
+    section: "4. Employment Status Questions"
+    label: "Will the worker have to fund any Vehicle costs before the University pays them?"
+    help_text: >-
+      Normal fuel costs, including "commuting" will NOT count as a 'yes'. The
+      purpose of this question is around whether the individual must acquire a
+      specialist vehicle or substantial costs in terms of insurance etc.
+    type: structured
+    cell: I154
+    ir35_test: financial_risk
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_13_rationale
+    form_ref: "4.13r"
+    label: "Please explain the reason/rationale for your answer in 4.13"
+    type: free_text
+    cell: I157
+    justification_for: q4_13_vehicle_costs
+    ir35_test: financial_risk
+    pii_class: none
+
+  - id: q4_14_materials_unreimbursed
+    form_ref: "4.14"
+    section: "4. Employment Status Questions"
+    label: >-
+      Based upon this engagement, does the worker pay the costs of all the
+      materials or supplies needed to do the work, apart from minor items and
+      consumables, without being reimbursed?
+    help_text: "These costs must be significant compared to the value of the work"
+    type: structured
+    cell: I161
+    ir35_test: financial_risk
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_14_rationale
+    form_ref: "4.14r"
+    label: "Please explain the reason/rationale for your answer in 4.14"
+    type: free_text
+    cell: I165
+    justification_for: q4_14_materials_unreimbursed
+    ir35_test: financial_risk
+    pii_class: none
+
+  - id: q4_15_other_costs
+    form_ref: "4.15"
+    section: "4. Employment Status Questions"
+    label: >-
+      Based upon this engagement, will the worker have to fund any other costs
+      before they are paid? i.e. non-commuting travel or accomodation or
+      external premises for this work only.
+    type: structured
+    cell: I169
+    ir35_test: financial_risk
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    note: "Data validation spans I169:J170 — confirm the intended input cell with the form owner."
+  - id: q4_15_rationale
+    form_ref: "4.15r"
+    label: "Please explain the reason/rationale for your answer in 4.15"
+    type: free_text
+    cell: I172
+    justification_for: q4_15_other_costs
+    ir35_test: financial_risk
+    pii_class: none
+
+  - id: q4_16_payment_basis
+    form_ref: "4.16"
+    section: "4. Employment Status Questions"
+    label: "How will the worker be paid for this work?"
+    type: structured
+    cell: I176
+    ir35_test: financial_risk
+    pii_class: none
+    value_domain:
+      - "An hourly/daily or weekly rate"
+      - "A fixed price for the project"
+      - "A fixed amount for each piece of work completed"
+      - "A percentage of the sales the worker generates"
+      - "a percentage of the organisations profit or savings"
+  - id: q4_16_rationale
+    form_ref: "4.16r"
+    label: >-
+      Please explain the reason/rationale for your answer in 4.16. (Include
+      information on the timescales, amounts and deliverables, if applicable)
+    type: free_text
+    cell: I178
+    justification_for: q4_16_payment_basis
+    ir35_test: financial_risk
+    pii_class: none
+    contains_commercial_values: true   # rates and fees are expected here — deidentifier masks them
+
+  - id: q4_17_put_right
+    form_ref: "4.17"
+    section: "4. Employment Status Questions"
+    label: "If the University is not satisfied with the work, does the worker need to put it right?"
+    type: structured
+    cell: I183
+    ir35_test: financial_risk
+    pii_class: none
+    value_domain:
+      - "Yes - unpaid & they would have extra costs that the University would not pay for"
+      - "Yes - unpaid but their only cost would be loss of opportunity to do other work"
+      - "Yes - the worker would put it right in their usual hours at their usual rate or fee"
+      - "No - the work is time-specific or for a single event"
+      - "No"
+  - id: q4_17_rationale
+    form_ref: "4.17r"
+    label: >-
+      Please explain the reason/rationale for your answer in 4.17.
+      (If yes and would incur extra costs, give details on what these extra costs would be)
+    type: free_text
+    cell: I185
+    justification_for: q4_17_put_right
+    ir35_test: financial_risk
+    pii_class: none
+
+  - id: q4_18_benefits
+    form_ref: "4.18"
+    section: "4. Employment Status Questions"
+    label: >-
+      Will the worker be provided with paid for benefits from the University,
+      ie private medical insurance, dental insurance, gym membership etc
+    type: structured
+    cell: I190
+    ir35_test: part_and_parcel
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_18_rationale
+    form_ref: "4.18r"
+    label: "Please explain the reason/rationale for your answer in 4.18"
+    type: free_text
+    cell: I192
+    justification_for: q4_18_benefits
+    ir35_test: part_and_parcel
+    pii_class: none
+
+  - id: q4_19_manages_staff
+    form_ref: "4.19"
+    section: "4. Employment Status Questions"
+    label: >-
+      Will the worker be responsible for hiring or dismissing University workers,
+      delivering appraisals, or deciding upon how much to pay them?
+    type: structured
+    cell: I197
+    ir35_test: part_and_parcel
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_19_rationale
+    form_ref: "4.19r"
+    label: "Please explain the reason/rationale for your answer in 4.19"
+    type: free_text
+    cell: I199
+    justification_for: q4_19_manages_staff
+    ir35_test: part_and_parcel
+    pii_class: none
+
+  - id: q4_20_identifies_as
+    form_ref: "4.20"
+    section: "4. Employment Status Questions"
+    label: >-
+      When the worker interacts with students, partners or users, how do they
+      identify themselves?
+    type: structured
+    cell: I204
+    ir35_test: part_and_parcel
+    pii_class: none
+    value_domain:
+      - "They work for the organisation (the University)"
+      - "They are an independent worker acting on behalf of the organisation"
+      - "They work for their own business"
+      - "This would not happen"
+    note: "Template cell B204 reads '4.2' — Excel dropped the trailing zero of 4.20."
+  - id: q4_20_rationale
+    form_ref: "4.20r"
+    label: "Please explain the reason/rationale for your answer in 4.20"
+    type: free_text
+    cell: I206
+    justification_for: q4_20_identifies_as
+    ir35_test: part_and_parcel
+    pii_class: none
+
+  - id: q4_21_exclusivity_clause
+    form_ref: "4.21"
+    section: "4. Employment Status Questions"
+    label: "Does the contract stop the worker from doing similar work for other people or organisations?"
+    type: structured
+    cell: I211
+    ir35_test: business_on_own_account
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    routing: {"Yes": q4_23_ownership_rights, "No": q4_22_permission_required}
+  - id: q4_21_rationale
+    form_ref: "4.21r"
+    label: "Please explain the reason/rationale for your answer in 4.21"
+    type: free_text
+    cell: I213
+    justification_for: q4_21_exclusivity_clause
+    ir35_test: business_on_own_account
+    pii_class: none
+
+  - id: q4_22_permission_required
+    form_ref: "4.22"
+    section: "4. Employment Status Questions"
+    label: "Is the worker required to ask permission to work for other organisations?"
+    type: structured
+    cell: I218
+    ir35_test: business_on_own_account
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_22_rationale
+    form_ref: "4.22r"
+    label: "Please explain the reason/rationale for your answer in 4.22"
+    type: free_text
+    cell: I220
+    justification_for: q4_22_permission_required
+    ir35_test: business_on_own_account
+    pii_class: none
+
+  - id: q4_23_ownership_rights
+    form_ref: "4.23"
+    section: "4. Employment Status Questions"
+    label: >-
+      Are there any ownership rights relating to the contract, including
+      intellectual property rights, copyright, trademarks, patents and image rights?
+    type: structured
+    cell: I225
+    ir35_test: business_on_own_account
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    routing: {"Yes": q4_24_rights_to_university, "No": q4_25_option_to_buy_rights}
+  - id: q4_23_rationale
+    form_ref: "4.23r"
+    label: "Please explain the reason/rationale for your answer in 4.23"
+    type: free_text
+    cell: I227
+    justification_for: q4_23_ownership_rights
+    ir35_test: business_on_own_account
+    pii_class: none
+
+  - id: q4_24_rights_to_university
+    form_ref: "4.24"
+    section: "4. Employment Status Questions"
+    label: "Does the contract state the rights to this work belong to the University?"
+    type: structured
+    cell: I232
+    ir35_test: business_on_own_account
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    routing: {"Yes": q4_26_previous_contract, "No": q4_25_option_to_buy_rights}
+  - id: q4_24_rationale
+    form_ref: "4.24r"
+    label: "Please explain the reason/rationale for your answer in 4.24"
+    type: free_text
+    cell: I234
+    justification_for: q4_24_rights_to_university
+    ir35_test: business_on_own_account
+    pii_class: none
+
+  - id: q4_25_option_to_buy_rights
+    form_ref: "4.25"
+    section: "4. Employment Status Questions"
+    label: "Does the contract give the University the option to buy the rights for a separate fee?"
+    type: structured
+    cell: I239
+    ir35_test: business_on_own_account
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_25_rationale
+    form_ref: "4.25r"
+    label: "Please explain the reason/rationale for your answer in 4.25"
+    type: free_text
+    cell: I241
+    justification_for: q4_25_option_to_buy_rights
+    ir35_test: business_on_own_account
+    pii_class: none
+
+  - id: q4_26_previous_contract
+    form_ref: "4.26"
+    section: "4. Employment Status Questions"
+    label: "Has the worker had a previous contract with the University?"
+    type: structured
+    cell: I246
+    ir35_test: mutuality_of_obligation
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_26_rationale
+    form_ref: "4.26r"
+    label: "Please explain the reason/rationale for your answer in 4.26"
+    type: free_text
+    cell: I248
+    justification_for: q4_26_previous_contract
+    ir35_test: mutuality_of_obligation
+    pii_class: none
+
+  - id: q4_27_first_in_series
+    form_ref: "4.27"
+    section: "4. Employment Status Questions"
+    label: "Is the current contract the first in a series of contracts agreed with the University?"
+    type: structured
+    cell: I253
+    ir35_test: mutuality_of_obligation
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_27_rationale
+    form_ref: "4.27r"
+    label: "Please explain the reason/rationale for your answer in 4.27"
+    type: free_text
+    cell: I255
+    justification_for: q4_27_first_in_series
+    ir35_test: mutuality_of_obligation
+    pii_class: none
+
+  - id: q4_28_starts_immediately_after
+    form_ref: "4.28"
+    section: "4. Employment Status Questions"
+    label: "Will this contract start immediately after the previous one ended?"
+    type: structured
+    cell: I260
+    ir35_test: mutuality_of_obligation
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_28_rationale
+    form_ref: "4.28r"
+    label: "Please explain the reason/rationale for your answer in 4.28"
+    type: free_text
+    cell: I262
+    justification_for: q4_28_starts_immediately_after
+    ir35_test: mutuality_of_obligation
+    pii_class: none
+
+  - id: q4_29_extendable
+    form_ref: "4.29"
+    section: "4. Employment Status Questions"
+    label: "Does the current contract allow for it to be extended?"
+    type: structured
+    cell: I267
+    ir35_test: mutuality_of_obligation
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_29_rationale
+    form_ref: "4.29r"
+    label: "Please explain the reason/rationale for your answer in 4.29"
+    type: free_text
+    cell: I269
+    justification_for: q4_29_extendable
+    ir35_test: mutuality_of_obligation
+    pii_class: none
+
+  - id: q4_30_majority_of_time
+    form_ref: "4.30"
+    section: "4. Employment Status Questions"
+    label: "Will this work take up the majority of the workers' available working time?"
+    type: structured
+    cell: I274
+    ir35_test: business_on_own_account
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    note: "Template cell B274 reads '4.3' — Excel dropped the trailing zero of 4.30."
+  - id: q4_30_rationale
+    form_ref: "4.30r"
+    label: "Please explain the reason/rationale for your answer in 4.30"
+    type: free_text
+    cell: I276
+    justification_for: q4_30_majority_of_time
+    ir35_test: business_on_own_account
+    pii_class: none
+
+  - id: q4_31_other_clients
+    form_ref: "4.31"
+    section: "4. Employment Status Questions"
+    label: >-
+      Has the worker done any self-employed work of a similar nature for other
+      clients in the last 12 months?
+    help_text: >-
+      This only refers to work requiring similar skills, responsibilities,
+      knowledge or ability. Self-employed work is when it is the worker's
+      responsibility to pay income tax and national insurance contributions on
+      their earnings.
+    type: structured
+    cell: I281
+    ir35_test: business_on_own_account
+    pii_class: none
+    value_domain: ["Yes", "No"]
+  - id: q4_31_rationale
+    form_ref: "4.31r"
+    label: "Please explain the reason/rationale for your answer in 4.31"
+    type: free_text
+    cell: I286
+    justification_for: q4_31_other_clients
+    ir35_test: business_on_own_account
+    pii_class: none
+
+  # --- Section 5: Declaration ----------------------------------------------
+  - id: q5_01_school_division
+    form_ref: "5.1"
+    section: "5. Declaration"
+    label: "School/Division"
+    type: metadata
+    cell: G293
+    pii_class: quasi_identifier
+    note: "Retained (hashed) as a cohort variable for the Phase 4 disparity analysis."
+  - id: q5_02_engaging_officer
+    form_ref: "5.2"
+    section: "5. Declaration"
+    label: "Name of the engaging officer"
+    type: metadata
+    cell: G295
+    pii_class: direct_identifier
+  - id: q5_03_contact_name
+    form_ref: "5.3"
+    section: "5. Declaration"
+    label: "Contact name (if different)"
+    type: metadata
+    cell: G297
+    pii_class: direct_identifier
+  - id: q5_04_phone
+    form_ref: "5.4"
+    section: "5. Declaration"
+    label: "Phone number"
+    type: metadata
+    cell: G299
+    pii_class: direct_identifier
+  - id: q5_05_email
+    form_ref: "5.5"
+    section: "5. Declaration"
+    label: "Email address"
+    type: metadata
+    cell: G301
+    pii_class: direct_identifier
+
+  # --- IR35 team use only (outcome fields) ----------------------------------
+  # These are the OUTCOME, not an input. They must never be visible to the
+  # model at inference time. Held here so ingest can strip them explicitly
+  # rather than by omission.
+  - id: ir35_assessment_date
+    section: "For IR35 Team use only"
+    label: "Date assessment undertaken"
+    type: metadata
+    cell: G311
+    pii_class: none
+    role: outcome
+  - id: ir35_assessor_name
+    section: "For IR35 Team use only"
+    label: "Name of person completing assessment"
+    type: metadata
+    cell: G313
+    pii_class: direct_identifier
+    role: outcome
+  - id: ir35_hr_authorisation
+    section: "For IR35 Team use only"
+    label: "HR Authorisation / signature (Payroll Manager / Deputy Director of HR)"
+    type: metadata
+    cell: G315
+    pii_class: direct_identifier
+    role: outcome
+  - id: ir35_outcome
+    section: "For IR35 Team use only"
+    label: "IR35 determination"
+    type: structured
+    cell: C319_or_C322    # two mutually exclusive statement blocks on the template
+    pii_class: none
+    role: outcome
+    value_domain: ["inside", "outside"]
+    value_labels:
+      inside: "IR35 Applies - The worker is a deemed employee and will be paid via payroll."
+      outside: >-
+        IR35 does not apply - Engage the worker by raising a purchase order in
+        line with the University's Purchasing Policy.
+    note: >-
+      The template has no dropdown here — the outcome is recorded by which of
+      the two statement blocks is retained/ticked. The real-form adapter will
+      need a rule for this. On synthetic data it is generated explicitly.
