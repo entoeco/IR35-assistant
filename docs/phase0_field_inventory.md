@@ -241,6 +241,19 @@ guard.
 
 ---
 
+## 4a. Decisions taken (2026-09-03)
+
+Confirmed with Rob at the Phase 0 gate. These resolve questions (c), (g) and (h)
+in §5 below; the remaining items stay open.
+
+| # | Decision | Consequence |
+|---|---|---|
+| g | **Rule engine derives the label.** A documented CEST-approximating rule set produces `inside` / `outside` / `undetermined` from the generated structured answers. | Answers and label are causally linked, which is the defensible position for the write-up. **Mitigation is mandatory:** the Phase 2 rule baseline must use deliberately different and simpler logic from the generator's rule engine, and the evaluation section must state plainly that a rule baseline evaluated against rule-generated labels carries an inherited advantage. Without that caveat the Phase 2 result is not a real finding. |
+| h | **Inside rate raised to ~25–30%**, from the 14% originally specified. | Closer to a university's typical CEST outcome mix and gives the status classifier a workable positive class. Documented as a modelling choice, not an empirical claim about Sussex — we have no real outcome data to calibrate against, and saying so is part of the honesty of the artefact. Contradiction rate stays at 15%, unchanged and independent. |
+| c | **Q4.5 "No" is the outside-leaning answer.** No right to reject a substitute = unfettered right of substitution = points outside. | Consistent with the form's own routing. Set as `outside_leaning: "No"` in `contradiction_pairs.yaml`, so a later reversal is a one-line config edit, not a code change. Still worth confirming with the IR35 team before real data — this is the polarity of the highest-priority pair in the set. |
+
+---
+
 ## 5. Things I need you to clarify
 
 **a. Broken/orphan data validations.** Six validation rules in the workbook
