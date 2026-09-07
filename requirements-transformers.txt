@@ -1,0 +1,35 @@
+# OPTIONAL. Only needed to run Phase 3's real local_transformers or
+# local_llm backends (src/models/backend.py) against actual model weights.
+#
+# Nothing else in this project imports torch or transformers at module load
+# time — src/models/backend.py imports them lazily, inside the specific
+# methods that need them — so the full test suite, the rule and TF-IDF
+# baselines, the corpus generator and the Phase 5 reviewer app all run
+# without this file installed. Confirmed by running the full suite (232
+# tests) with both packages uninstalled: see docs/reports/
+# phase6_handover_report.md.
+#
+# The mock backend (default in config/model.yaml for anywhere without cached
+# weights) and the hosted API backend need neither package either.
+#
+# Install this file only if you are going to fetch real weights with
+# scripts/fetch_models.py and run scripts/run_phase3.py for real — which
+# also needs network access to a model host, see docs/phase3_status.md for
+# why that was not possible in the build sandbox.
+#
+# NOTE ON THE TORCH BUILD: the CUDA build the build sandbox resolved
+# (`torch==2.14.0+cu130`) is not portable to an ordinary laptop, so this file
+# points at PyTorch's own CPU wheel index instead and pins the matching base
+# version. HONESTLY FLAGGED, in the same spirit as docs/phase3_status.md:
+# the build sandbox's egress policy blocks download.pytorch.org (confirmed
+# while writing this file — a 403 from the proxy, not a missing package), so
+# this exact pin could not be installed or verified from here. If
+# `torch==2.14.0` is not available on the CPU index by the time you install
+# this, run `pip index versions torch --index-url
+# https://download.pytorch.org/whl/cpu` and adjust the pin to the nearest
+# available version — the code has no dependency on a specific torch patch
+# release, only on the `transformers` API surface it calls in
+# src/models/backend.py.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.14.0
+transformers==5.16.1

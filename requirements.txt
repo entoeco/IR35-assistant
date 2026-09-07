@@ -1,5 +1,21 @@
 # Pinned exactly. An unpinned dependency makes the "reproducible from config"
 # claim false the moment a transitive release changes behaviour.
+#
+# This file installs everything needed to run the tests, regenerate the
+# synthetic corpus, run the Phase 2/4 baselines and evaluation, and run the
+# Phase 5 reviewer app (`streamlit run src/ui/app.py`) — on any machine, with
+# no GPU and no special package index. That is deliberate: Phase 6 found that
+# the original single-file requirements.txt pinned a CUDA-only build of
+# torch, which `pip install -r requirements.txt` cannot resolve on an
+# ordinary laptop at all (there is no `+cu130` wheel on the public index),
+# meaning the very first Phase 6 gate — clean clone, install, run — failed on
+# any machine unlike the one this project was built on. See
+# requirements-transformers.txt for what that pin moved to, and
+# docs/reports/phase6_handover_report.md for the full story.
+#
+# For an exact, transitively-pinned reproduction of the environment this was
+# built and tested against (not just these direct dependencies), see
+# requirements-lock.txt.
 
 # Core: config loading and tests.
 PyYAML==6.0.3
@@ -14,14 +30,6 @@ matplotlib==3.10.9
 # Read only. Used once, in Phase 0, to extract the schema from the ESQ
 # template. Not needed to regenerate the corpus or run the baselines.
 openpyxl==3.1.5
-
-# Phase 3 local backends. Only needed to run the NLI or local-LLM arms;
-# the mock and hosted backends need neither.
-# NOTE: the torch pin below is the CUDA build resolved in the build sandbox.
-# On a laptop install the CPU wheel instead — several GB smaller, same code:
-#   pip install torch --index-url https://download.pytorch.org/whl/cpu
-torch==2.14.0+cu130
-transformers==5.16.1
 
 # Phase 5 reviewer interface.
 streamlit==1.63.0

@@ -15,6 +15,7 @@ network policy. Package registries are permitted; model hosting is not.
 |---|---|---|
 | `pypi.org`, `files.pythonhosted.org` | `torch`, `transformers` | reachable — both installed |
 | `huggingface.co`, `cdn-lfs.huggingface.co` | model weights | **403 at the egress proxy (organisation policy)** |
+| `download.pytorch.org` | CPU-wheel torch build (Phase 6) | **403 at the egress proxy — same policy** |
 | `api.anthropic.com` | hosted few-shot arm | reachable, but no API key is present in the environment |
 
 So the cross-encoder NLI weights cannot be downloaded, and the hosted few-shot
@@ -70,7 +71,8 @@ matching on the wrong span of a prompt — would have been much harder to see.
 On any machine that can reach `huggingface.co`:
 
 ```bash
-pip install -r requirements.txt          # see the note on torch below
+pip install -r requirements.txt
+pip install -r requirements-transformers.txt   # see the note on torch below
 python scripts/fetch_models.py           # ~1.5 GB into models/weights/
 python scripts/run_phase3.py             # backend from config/model.yaml
 ```
@@ -85,15 +87,15 @@ justification text to a third party; on real submissions that is an Information
 Governance decision, and `require_local: true` in `config/model.yaml` exists to
 make the local-only posture enforceable rather than aspirational.
 
-**Note on `torch`.** `requirements.txt` pins the version resolved in this
-sandbox, which is a CUDA build. On a laptop, install the CPU wheel instead:
-
-```bash
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-```
-
-The CUDA build works on CPU but is several gigabytes larger, and the deployment
-target is a laptop.
+**Note on `torch`.** As of Phase 6, `torch` and `transformers` live in their
+own optional `requirements-transformers.txt`, pinned to PyTorch's CPU wheel
+index rather than the CUDA build this sandbox originally resolved
+(`torch==2.14.0+cu130`) — that pin does not exist on the public index and
+would have made a plain `pip install -r requirements.txt` fail on any machine
+unlike this one. See `requirements-transformers.txt` for the detail and the
+caveat that the exact pin could not be verified from this sandbox either
+(`download.pytorch.org` is blocked by the same egress policy as
+`huggingface.co`, above).
 
 ---
 
