@@ -44,8 +44,14 @@ test_weights:
   mutuality_of_obligation: 0.05
 
 thresholds:
-  outside_above: 0.12
-  inside_below: -0.12
+  # Tuned in Phase 1 against the target label mix. At ±0.12 the abstention band
+  # swallowed 37% of the corpus, because the weighted total for a realistic form
+  # clusters near zero — most engagements have some indicators pointing each way,
+  # which is the whole reason status determination is contested. ±0.04 leaves an
+  # abstention rate around 10-12%, which is the right order for genuinely
+  # borderline cases without drowning the labelled classes.
+  outside_above: 0.04
+  inside_below: -0.04
   # Between the two, the engine abstains. This band is not a failure mode — it
   # is the "unable to determine" outcome CEST itself returns, and the dataset
   # needs those cases because a tool that flags confidently on a genuinely

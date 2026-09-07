@@ -63,10 +63,10 @@ archetypes:
       most practised at answering the form.
     polarity_bias:
       substitution: 0.55
-      control: 0.60
+      control: 0.58
       financial_risk: 0.55
-      part_and_parcel: 0.75
-      business_on_own_account: 0.75
+      part_and_parcel: 0.74
+      business_on_own_account: 0.74
       mutuality_of_obligation: 0.60
     via_third_party_rate: 0.85
     engagement_months: [2, 12]
@@ -82,12 +82,12 @@ archetypes:
       to be where the detector performs worst — which is a Phase 4 finding, not
       a defect to hide.
     polarity_bias:
-      substitution: 0.15
-      control: 0.35
-      financial_risk: 0.20
-      part_and_parcel: 0.35
-      business_on_own_account: 0.45
-      mutuality_of_obligation: 0.25
+      substitution: 0.25
+      control: 0.44
+      financial_risk: 0.30
+      part_and_parcel: 0.46
+      business_on_own_account: 0.56
+      mutuality_of_obligation: 0.36
     via_third_party_rate: 0.25
     engagement_months: [3, 10]
     register_bias: {verbose: 0.45, terse: 0.15, hedged: 0.40}
@@ -100,12 +100,12 @@ archetypes:
       real rectification liability, so it skews outside on financial risk while
       often being tightly controlled on location and access.
     polarity_bias:
-      substitution: 0.60
-      control: 0.50
-      financial_risk: 0.80
-      part_and_parcel: 0.80
-      business_on_own_account: 0.70
-      mutuality_of_obligation: 0.65
+      substitution: 0.62
+      control: 0.55
+      financial_risk: 0.82
+      part_and_parcel: 0.82
+      business_on_own_account: 0.74
+      mutuality_of_obligation: 0.68
     via_third_party_rate: 0.70
     engagement_months: [1, 6]
     register_bias: {verbose: 0.15, terse: 0.60, hedged: 0.25}
@@ -118,15 +118,70 @@ archetypes:
       integrated into a project team, and IP terms matter more here than
       anywhere else on the form.
     polarity_bias:
-      substitution: 0.35
-      control: 0.60
-      financial_risk: 0.40
-      part_and_parcel: 0.55
-      business_on_own_account: 0.60
-      mutuality_of_obligation: 0.45
+      substitution: 0.45
+      control: 0.62
+      financial_risk: 0.50
+      part_and_parcel: 0.62
+      business_on_own_account: 0.68
+      mutuality_of_obligation: 0.55
     via_third_party_rate: 0.55
     engagement_months: [2, 18]
     register_bias: {verbose: 0.50, terse: 0.20, hedged: 0.30}
+
+# -----------------------------------------------------------------------------
+# FIELD PRIORS — base rates that override polarity sampling
+#
+# Polarity sampling asks "should this answer lean outside?" and picks
+# accordingly. For most questions that is the right model. For a handful it is
+# badly wrong, because the answer is governed by a base rate in the world rather
+# than by how self-employed the engagement is.
+#
+# The clearest case is 4.2. Sampled by polarity it came out "Yes" on roughly
+# half of records, and since office holder is a determinative gate that alone
+# labelled 45% of the corpus inside. Office holders are rare; the base rate
+# belongs here, not in a polarity bias.
+#
+# The substitution history questions are the same problem. A substitute having
+# ACTUALLY been sent and paid is a determinative gate to outside, and it is
+# uncommon in practice. Left to polarity sampling it fired on a quarter of
+# records and made "outside" too easy to reach.
+#
+# Rates below are judgement, not measurement — we have no real ESQ outcome data
+# to calibrate against. They are recorded here so the assumption is visible and
+# a single edit changes it.
+# -----------------------------------------------------------------------------
+field_priors:
+  q4_02_office_holder:
+    "Yes": 0.04
+    "No": 0.96
+
+  q4_01_already_started:
+    "Yes": 0.30
+    "No": 0.70
+
+  q4_03_substitute_sent:
+    "Yes - you accepted them": 0.05
+    "Yes - you did not accept them": 0.03
+    "No - they have not sent a substitute": 0.52
+    "Not applicable - work has not started": 0.40
+
+  q4_06_paid_another_person:
+    "Yes": 0.10
+    "No": 0.90
+
+# Consistency enforced after sampling. Work that has not started cannot have had
+# a substitute sent, and the form's own cross-field check x_started_but_not_
+# applicable exists precisely because managers get this wrong. Violations are
+# injected deliberately at anomalies.routing_violation_rate rather than arising
+# by accident, so the ground truth knows which records are inconsistent.
+consistency_rules:
+  - id: not_started_implies_substitution_na
+    when: {q4_01_already_started: "No"}
+    force: {q4_03_substitute_sent: "Not applicable - work has not started"}
+  - id: started_implies_substitution_answered
+    when: {q4_01_already_started: "Yes"}
+    forbid: {q4_03_substitute_sent: "Not applicable - work has not started"}
+    fallback: {q4_03_substitute_sent: "No - they have not sent a substitute"}
 
 # -----------------------------------------------------------------------------
 # AMBIGUOUS CASES
@@ -208,22 +263,39 @@ anomalies:
   routing_violation_rate: 0.02
 
 # -----------------------------------------------------------------------------
+# IDENTITY MENTIONS IN FREE TEXT
+# Share of records where the manager names the worker inside a justification
+# box. This is how personal data actually ends up in fields the schema
+# classifies as carrying none, and it is what the de-identifier's gazetteer
+# exists to catch — so the corpus carries it, and the highest-risk
+# de-identification path is exercised on generated records rather than only in
+# unit tests.
+# -----------------------------------------------------------------------------
+identity_mentions:
+  record_rate: 0.30
+  max_per_record: 2
+
+# -----------------------------------------------------------------------------
 # SYNTHETIC IDENTITY POOLS (constraint 1)
 # Recombined fragments, not real people. The de-identifier is run over the
 # output anyway, so that the pipeline order is exercised on every record.
 # -----------------------------------------------------------------------------
+# Every entry is quoted. PyYAML implements YAML 1.1, where bare `on`, `off`,
+# `yes` and `no` parse as booleans — an unquoted name fragment "on" arrives as
+# `False` and concatenation blows up at generation time. tests/test_generator.py
+# asserts every pool entry is a string so a future edit cannot reintroduce it.
 identity_pools:
-  titles: [Mr, Ms, Mrs, Dr, Prof, Mx]
-  forename_fragments: [Al, Ber, Cas, Dar, El, Fen, Gar, Hal, Im, Jor, Kel, Lor, Mar, Nes, Or, Pel, Quen, Ros, Sel, Tam, Ur, Val, Wen, Yar, Zel]
-  forename_endings: [an, ia, en, is, on, ara, ie, us, ette, ov]
-  surname_fragments: [Ash, Bram, Cald, Dun, East, Fair, Green, Hart, Ings, Jenn, Kirk, Lamb, Mor, Nor, Oak, Prid, Quar, Rid, Sten, Thorn, Under, Vane, Whit, Yew]
-  surname_endings: [ley, wood, field, ton, worth, bury, combe, ridge, well, stone]
+  titles: ["Mr", "Ms", "Mrs", "Dr", "Prof", "Mx"]
+  forename_fragments: ["Al", "Ber", "Cas", "Dar", "El", "Fen", "Gar", "Hal", "Im", "Jor", "Kel", "Lor", "Mar", "Nes", "Or", "Pel", "Quen", "Ros", "Sel", "Tam", "Ur", "Val", "Wen", "Yar", "Zel"]
+  forename_endings: ["an", "ia", "en", "is", "on", "ara", "ie", "us", "ette", "ov"]
+  surname_fragments: ["Ash", "Bram", "Cald", "Dun", "East", "Fair", "Green", "Hart", "Ings", "Jenn", "Kirk", "Lamb", "Mor", "Nor", "Oak", "Prid", "Quar", "Rid", "Sten", "Thorn", "Under", "Vane", "Whit", "Yew"]
+  surname_endings: ["ley", "wood", "field", "ton", "worth", "bury", "combe", "ridge", "well", "stone"]
   company_suffixes: ["Ltd", "Limited", "Consulting Ltd", "Associates Ltd", "Services Ltd", "LLP"]
-  street_names: [Marchmont, Elder, Bramble, Kestrel, Wharfdale, Sandpiper, Colliers, Ferndale, Wickham, Larkspur]
-  street_types: [Road, Lane, Close, Avenue, Way, Gardens, Rise, Court]
-  towns: [Brightonford, Lewesbury, Hovedale, Uckwell, Portstead, Havenbridge, Steyford, Arunwick]
-  postcode_areas: [BN, RH, TN, PO, GU]
-  email_domains: [example.com, example.org, example.net]
+  street_names: ["Marchmont", "Elder", "Bramble", "Kestrel", "Wharfdale", "Sandpiper", "Colliers", "Ferndale", "Wickham", "Larkspur"]
+  street_types: ["Road", "Lane", "Close", "Avenue", "Way", "Gardens", "Rise", "Court"]
+  towns: ["Brightonford", "Lewesbury", "Hovedale", "Uckwell", "Portstead", "Havenbridge", "Steyford", "Arunwick"]
+  postcode_areas: ["BN", "RH", "TN", "PO", "GU"]
+  email_domains: ["example.com", "example.org", "example.net"]
   # University-side context. The engager is real; the people are not.
   schools:
     - "School of Engineering and Informatics"
@@ -236,6 +308,42 @@ identity_pools:
     - "IT Services"
     - "Library and Learning Services"
     - "School of Law, Politics and Sociology"
+
+# -----------------------------------------------------------------------------
+# FIELD MAP (constraint 5)
+# The generator needs to know which field holds a surname and which holds the
+# third-party route. Those are the only places it would otherwise need a
+# hardcoded field id, so they live here instead. tests/test_generator.py parses
+# every module under src/ and fails if a field-id literal appears in code,
+# which is how the constraint is enforced rather than asserted.
+# -----------------------------------------------------------------------------
+identity_field_map:
+  title: q1_01_title
+  first_name: q1_02_first_name
+  surname: q1_03_surname
+  address_line1: q1_04_address_line1
+  address_line2: q1_04_address_line2
+  postcode: q1_04_postcode
+  telephone: q1_05_telephone
+  internet_presence: q1_06_internet_presence
+  school_division: q5_01_school_division
+  engaging_officer: q5_02_engaging_officer
+  officer_phone: q5_04_phone
+  officer_email: q5_05_email
+  company_name: q2_02_company_name
+  company_number: q2_03_company_number
+
+engagement_fields:
+  via_third_party: q2_01_via_third_party
+  engaged_directly: q3_01_engaged_directly
+  role_title: q4_00_role_title
+  duties_narrative: q4_00_duties_narrative
+  entity_relationship: q2_04_entity_relationship
+  years_in_business: q2_05_years_in_business
+
+# Section 4 is identified by this prefix on `form_ref`, not by field id, so a
+# renumbered form is still handled by editing config.
+section_four_prefix: "4."
 
 # -----------------------------------------------------------------------------
 # VALIDATION APPLIED TO EVERY GENERATED RECORD

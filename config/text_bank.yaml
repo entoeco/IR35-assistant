@@ -1,0 +1,696 @@
+# =============================================================================
+# TEXT BANK  —  content units and register realisation
+# =============================================================================
+# DESIGN: core proposition + register realiser.
+#
+# Each content unit is ONE semantic proposition written once. The register
+# realiser then renders it verbose, terse or hedged. This is deliberate:
+#
+#   1. It cuts authoring by roughly three, so the corpus can cover all 31 pairs
+#      properly rather than covering seven pairs well and the rest thinly.
+#   2. It makes Phase 4's style-invariance test meaningful. The same engagement
+#      is re-rendered from one saved state in three registers, so any variation
+#      in the detector's output is attributable to surface form alone. If the
+#      three renderings had been authored separately, drift could just as easily
+#      be a difference in what they said.
+#   3. It guarantees a planted contradiction survives the register. The
+#      contradiction lives in the content unit; the realiser only wraps it.
+#
+# The cost is that generated text is a little stiffer than a manager's real
+# prose. That is the right trade for a labelled corpus: I need to know exactly
+# which proposition carries the contradiction and how subtle it is. An LLM
+# paraphrase pass through the Phase 3 backend interface is the planned
+# enhancement, gated on re-checking that the contradiction survived.
+#
+# HEDGED IS A REGISTER, NOT A CONTRADICTION. Wrapping a supporting proposition
+# in "as far as I am aware" does not make it contradictory, and the generator
+# never labels it as such. The `hedged_non_support` contradiction TYPE is
+# different: there the hedging is baked into the content unit itself and is the
+# contradiction — the manager has selected a definite option and then written
+# something that does not support it.
+#
+# CONSTRAINT 1: every name, company, place and figure below is invented.
+# =============================================================================
+
+text_bank_version: "1.0.0"
+
+# -----------------------------------------------------------------------------
+# VOCABULARY. Slot fillers, mostly per archetype so that an IT contract does not
+# read like a lecturing contract with the nouns swapped.
+# -----------------------------------------------------------------------------
+vocab:
+  common:
+    approver: ["the Head of School", "the project sponsor", "the budget holder", "the Head of Department", "the programme lead"]
+    budget_holder: ["the School", "the department", "the project budget", "the research grant", "the divisional budget"]
+    amount: ["£420", "£515", "£380", "£640", "£275", "£1,200", "£8,500", "£3,400"]
+    rate_unit: ["per day", "per hour", "a day", "per session"]
+    months: ["three", "four", "six", "nine", "twelve", "eighteen"]
+    contract_clause: ["clause 4", "clause 7.2", "the schedule of services", "the statement of work", "Annex B"]
+
+  it_contractor:
+    role_noun: ["the contractor", "the supplier", "the consultant"]
+    deliverable: ["the identity management migration", "the student records integration", "the network segmentation project", "the finance system upgrade", "the API gateway rebuild"]
+    location: ["our Falmer data centre", "the IT Services floor at Shawcross", "the server room", "our offices at Sussex House"]
+    equipment: ["their own workstation and test hardware", "a licensed development environment", "their own laptop and VPN token", "specialist diagnostic software"]
+    materials: ["licences and cloud compute", "test hardware", "certificates and tooling"]
+    team: ["the infrastructure team", "the applications team", "the service desk"]
+
+  visiting_lecturer:
+    role_noun: ["the lecturer", "the visiting lecturer", "the tutor"]
+    deliverable: ["the second-year criminology module", "the postgraduate research methods seminars", "the clinical skills workshops", "the design studio module", "the professional practice lectures"]
+    location: ["Fulton Building teaching rooms", "the Jubilee lecture theatre", "the Falmer campus", "the studio in Silverstone"]
+    equipment: ["their own teaching materials and slides", "their own laptop", "a subscription to the case database"]
+    materials: ["handouts and case packs", "reading materials", "printed workbooks"]
+    team: ["the module team", "the teaching team", "the course convenors"]
+
+  technical_trades:
+    role_noun: ["the contractor", "the engineer", "the installer"]
+    deliverable: ["the fire alarm replacement in Arts A", "the chiller plant overhaul", "the electrical testing programme", "the lift refurbishment", "the roof waterproofing works"]
+    location: ["the Arts A plant room", "the Chichester building", "the Falmer estate", "the East Slope site"]
+    equipment: ["their own test instruments and access equipment", "a calibrated PAT tester and tower scaffold", "their own plant and tooling", "a specialist vehicle with an installed rig"]
+    materials: ["cable, containment and consumables", "plant and fixings", "sealant, membrane and fixings"]
+    team: ["the estates team", "the maintenance team", "the facilities team"]
+
+  research_consultant:
+    role_noun: ["the consultant", "the adviser", "the specialist"]
+    deliverable: ["the statistical analysis plan", "the health economics modelling", "the policy evidence review", "the trial data monitoring work", "the qualitative coding framework"]
+    location: ["the research office in Freeman", "the Medical School", "their own premises", "the project office"]
+    equipment: ["their own licensed statistical software", "their own computing environment", "a subscription to the survey platform"]
+    materials: ["software licences and data access fees", "transcription and data costs", "archive access charges"]
+    team: ["the project team", "the trial team", "the research group"]
+
+# -----------------------------------------------------------------------------
+# REGISTER REALISATION
+# Applied per record, not per field: a manager writes the whole form in one
+# voice, and Phase 4's style-invariance test depends on that.
+# -----------------------------------------------------------------------------
+registers:
+
+  verbose:
+    # HR-literate. Complete sentences, process vocabulary, an elaborating clause.
+    openers:
+      - "Having reviewed the arrangement in detail,"
+      - "For the avoidance of doubt,"
+      - "In line with the agreed terms of engagement,"
+      - "To explain the position fully,"
+      - "As set out in the documentation supporting this request,"
+      - "Following discussion with the budget holder,"
+    connectors: [" Furthermore,", " In addition,", " It should also be noted that", " I would add that"]
+    closers:
+      - " This reflects the position agreed at the outset of the engagement."
+      - " I am satisfied this is an accurate description of the arrangement."
+      - " The supporting documentation has been provided with this form."
+      - " This has been confirmed with the relevant budget holder."
+      - " I have answered on the basis of the arrangement as it currently stands."
+    elaborations:
+      - "which is consistent with how comparable engagements in the School have been treated"
+      - "and this was made clear to the supplier before the engagement was agreed"
+      - "as reflected in the written terms provided"
+      - "and the arrangement has been reviewed against our procurement guidance"
+    add_second_sentence_rate: 0.65
+
+  terse:
+    # Clipped and technical. Often verbless. Minimal explanation.
+    openers: ["", "", "", "Position:", "Note:", "Confirmed -"]
+    connectors: [".", ";", "."]
+    closers: ["", "", "", " No further detail held.", " As per contract."]
+    elaborations: []
+    add_second_sentence_rate: 0.15
+    lowercase_start_rate: 0.25
+
+  hedged:
+    # Vague, non-committal, deferred certainty.
+    openers:
+      - "As far as I am aware,"
+      - "My understanding is that"
+      - "I believe"
+      - "Broadly speaking,"
+      - "I think it is fair to say that"
+      - "So far as I know,"
+      - "Subject to confirmation,"
+    connectors: [" That said,", " Although,", " On the other hand,"]
+    closers:
+      - " I can check this with HR if required."
+      - " Happy to be corrected if that is not right."
+      - " This may need confirming with Procurement."
+      - " I have not seen the final contract, so this is my best understanding."
+      - " It has not come up so far, so this is somewhat hypothetical."
+    elaborations:
+      - "though I would want to confirm the detail"
+      - "at least that is how it has worked previously"
+      - "but the arrangement has not been tested"
+    add_second_sentence_rate: 0.45
+    softeners:
+      " is ": " would generally be "
+      " will ": " would probably "
+      " must ": " would be expected to "
+      " cannot ": " probably could not "
+      " do ": " would "
+      " has ": " has, I think, "
+
+# -----------------------------------------------------------------------------
+# CONTRADICTION FAMILIES
+# Several pairs share a contradiction shape. Defining the shape once and
+# parameterising it means the financial-risk pairs get consistent treatment and
+# the taxonomy generalises rather than being 31 special cases.
+# -----------------------------------------------------------------------------
+families:
+
+  reimbursement_flip:
+    description: "Answer claims an unreimbursed cost; text reveals the University pays or refunds it."
+    applies_to:
+      p_4_12_buys_equipment: {cost_noun: "the equipment"}
+      p_4_13_vehicle_costs: {cost_noun: "the vehicle and insurance costs"}
+      p_4_14_materials_unreimbursed: {cost_noun: "{materials}"}
+      p_4_15_other_costs: {cost_noun: "travel and accommodation"}
+    contradicts_value: "Yes"
+    units:
+      - subtlety: 1
+        text: "we cover {cost_noun} in full, so there is no cost to them"
+      - subtlety: 2
+        text: "{cost_noun} are recharged to {budget_holder} on production of receipts"
+      - subtlety: 3
+        text: "they meet {cost_noun} up front, then invoice it back to us alongside the fee at cost"
+
+# -----------------------------------------------------------------------------
+# CONTENT UNITS PER PAIR
+#
+#   supporting.<option value>  -> propositions consistent with that answer
+#   contradicting.<option value> -> propositions that UNDERMINE that answer,
+#                                   each labelled with its contradiction type
+#                                   and subtlety level (1 blatant, 3 expert)
+# -----------------------------------------------------------------------------
+pairs:
+
+  # ---------------- contract basis -----------------------------------------
+  p_1_08_contract_form:
+    supporting:
+      "Yes - contract already in place and provided with ESQ":
+        - "a signed statement of work is in place and is attached to this form"
+        - "formal contract issued by Procurement, countersigned, copy attached"
+      "Yes - contract not yet in place and will be provided later":
+        - "terms are agreed by email and the formal contract is with Legal for issue"
+        - "purchase order raised; written contract to follow once Procurement have reviewed it"
+      "No":
+        - "no written contract; the arrangement was agreed verbally with {approver}"
+    contradicting:
+      "Yes - contract already in place and provided with ESQ":
+        - {type: direct_negation, subtlety: 1, text: "nothing signed yet, we are still negotiating the terms"}
+        - {type: hedged_non_support, subtlety: 2, text: "there is an email exchange which we are treating as the contract for now"}
+
+  # ---------------- office holder -------------------------------------------
+  p_4_02_office_holder:
+    supporting:
+      "No":
+        - "{role_noun} is engaged solely to deliver {deliverable} and holds no position within the University"
+        - "no board, trustee or committee role; purely a delivery engagement"
+      "Yes":
+        - "they will sit on the programme board as a co-opted member for the duration"
+    contradicting:
+      "No":
+        - {type: direct_negation, subtlety: 1, text: "they will act as company secretary for the spin-out as part of this role"}
+        - {type: scope_qualification, subtlety: 2, text: "they chair the oversight committee, though I would not call that an office as such"}
+        - {type: scope_qualification, subtlety: 3, text: "they are named as a trustee of the associated charity, which is connected to but separate from this engagement"}
+
+  # ---------------- substitution --------------------------------------------
+  p_4_03_substitute_sent:
+    supporting:
+      "Yes - you accepted them":
+        - "their colleague covered two weeks in August and we had no objection"
+      "Yes - you did not accept them":
+        - "they offered a replacement but we declined as the work was already underway"
+      "No - they have not sent a substitute":
+        - "the same person has attended throughout; no substitution has arisen"
+      "Not applicable - work has not started":
+        - "engagement has not begun, so the question does not yet arise"
+    contradicting:
+      "No - they have not sent a substitute":
+        - {type: direct_negation, subtlety: 1, text: "one of their team covered the {deliverable} sessions in July when they were away"}
+        - {type: temporal_inconsistency, subtlety: 2, text: "on the previous contract they did send someone else for a fortnight, but not on this one as far as I recall"}
+        - {type: named_person_dependency, subtlety: 2, text: "no substitution has arisen and none would be workable, since the engagement was awarded on the strength of this person's own track record"}
+      "Yes - you accepted them":
+        - {type: named_person_dependency, subtlety: 3, text: "a colleague from their firm sat in for a session, though only because they had shadowed this individual for months and knew exactly how they run it"}
+      "Not applicable - work has not started":
+        - {type: temporal_inconsistency, subtlety: 1, text: "they have been on site since the start of term and are already three weeks in"}
+
+  p_4_04_worker_pays_substitute:
+    supporting:
+      "Yes":
+        - "any replacement is engaged and paid by their company, not by us"
+        - "substitute costs sit with the supplier under {contract_clause}"
+      "No":
+        - "we would need to engage and pay a replacement directly"
+    contradicting:
+      "Yes":
+        - {type: reimbursement_flip, subtlety: 1, text: "we paid the stand-in directly through a separate purchase order"}
+        - {type: reimbursement_flip, subtlety: 2, text: "in practice the cover was put through our own payroll for the two weeks involved"}
+        - {type: reimbursement_flip, subtlety: 3, text: "they invoice for the replacement's time at the same {rate_unit} rate, so the cost passes through to us either way"}
+
+  p_4_05_right_to_reject:
+    supporting:
+      "No":
+        - "we have no contractual right to refuse a replacement provided they hold the relevant qualification"
+        - "the supplier may substitute at their own discretion under {contract_clause}"
+        - "substitution is entirely a matter for {role_noun}; we have no veto"
+      "Yes":
+        - "we retain the right to refuse any proposed replacement"
+        - "any substitute must be approved by {approver} before starting"
+    contradicting:
+      "No":
+        - {type: named_person_dependency, subtlety: 1, text: "we specifically need this individual, nobody else has the expertise"}
+        - {type: named_person_dependency, subtlety: 1, text: "the engagement is entirely dependent on this person; there is no realistic alternative"}
+        - {type: scope_qualification, subtlety: 2, text: "any replacement would need to be approved by us and security cleared before they could start"}
+        - {type: scope_qualification, subtlety: 2, text: "we would need to be satisfied that anyone sent had equivalent skills and experience before accepting them"}
+        - {type: hedged_non_support, subtlety: 3, text: "in principle there is nothing stopping them, although the work is tied to this person's individual accreditation so it has never been a realistic option"}
+        - {type: scope_qualification, subtlety: 3, text: "the contract is silent on substitution, but the specification names them personally as the delivery lead"}
+      "Yes":
+        - {type: direct_negation, subtlety: 1, text: "they can send whoever they like, it is entirely their call"}
+
+  p_4_06_paid_another_person:
+    supporting:
+      "Yes":
+        - "they subcontracted the survey work to another firm at their own cost"
+      "No":
+        - "all the work has been carried out personally by {role_noun}"
+    contradicting:
+      "Yes":
+        - {type: reimbursement_flip, subtlety: 2, text: "a member of {team} assisted for a few days, unpaid, as part of their normal duties"}
+        - {type: scope_qualification, subtlety: 3, text: "an assistant helped with data entry, though that was a very small part of the overall work"}
+        - {type: named_person_dependency, subtlety: 1, text: "nobody else has been paid to do any of it; the whole engagement rests on this one person"}
+      "No":
+        - {type: named_person_dependency, subtlety: 2, text: "they did bring in an associate for the modelling, but only under their own name and supervision"}
+
+  p_4_07_would_pay_substitute:
+    supporting:
+      "Yes":
+        - "any substitute would be paid by their company out of the agreed fee"
+      "No":
+        - "we would have to meet the cost of a replacement ourselves"
+    contradicting:
+      "Yes":
+        - {type: reimbursement_flip, subtlety: 1, text: "we would cover the replacement's costs, that would not fall to them"}
+        - {type: reimbursement_flip, subtlety: 3, text: "the fee would simply transfer to whoever did the work, so the cost stays with {budget_holder} either way"}
+        - {type: named_person_dependency, subtlety: 2, text: "hypothetically yes, but the specification names them personally so a substitute has never been on the table"}
+      "No":
+        - {type: named_person_dependency, subtlety: 3, text: "we would pay a replacement, though realistically the accreditation sits with this individual alone"}
+
+  # ---------------- control --------------------------------------------------
+  p_4_08_moved_from_task:
+    supporting:
+      "Yes":
+        - "we can direct them to other priorities within the same broad remit"
+      "No - they would have to agree":
+        - "any change of scope would need to be agreed with them first"
+      "No - that would require a new contract or formal working arrangement":
+        - "the scope is fixed by {contract_clause}; other work would need a new order"
+        - "{deliverable} is the whole of the engagement; anything else means a fresh statement of work"
+    contradicting:
+      "No - that would require a new contract or formal working arrangement":
+        - {type: direct_negation, subtlety: 1, text: "we move them onto whatever is most urgent that week"}
+        - {type: scope_qualification, subtlety: 2, text: "in practice we flex them across {team} as priorities change during term"}
+        - {type: scope_qualification, subtlety: 3, text: "the statement of work is broadly drawn, so redeploying them within the programme has not needed a variation so far"}
+      "No - they would have to agree":
+        - {type: direct_negation, subtlety: 2, text: "they are expected to pick up whatever the team needs, same as everyone else"}
+
+  p_4_09_decide_how:
+    supporting:
+      "Yes":
+        - "we set the method and they follow our documented process"
+      "No - the worker solely decides":
+        - "the approach is entirely theirs; we specify the outcome, not the method"
+        - "we have no expertise in this area, which is why we engaged them"
+      "No - the University and the worker agree together":
+        - "the approach was worked up jointly with {team} at the outset"
+      "Not Relevant - it is highly skilled work":
+        - "this is specialist work and we are not in a position to direct how it is done"
+        - "professional judgement throughout; method is a matter for their own accreditation"
+    contradicting:
+      "No - the worker solely decides":
+        - {type: direct_negation, subtlety: 1, text: "they follow our standard operating procedure and are supervised daily by {approver}"}
+        - {type: scope_qualification, subtlety: 2, text: "they work to our template and each stage is signed off before they move on"}
+      "Not Relevant - it is highly skilled work":
+        - {type: direct_negation, subtlety: 1, text: "they report to {approver} who directs the work week to week"}
+        - {type: scope_qualification, subtlety: 2, text: "highly skilled, but they are required to follow our house style and our documented process throughout"}
+        - {type: scope_qualification, subtlety: 3, text: "the method is theirs within the parameters we set, and we review the output at each milestone before they proceed"}
+        - {type: hedged_non_support, subtlety: 3, text: "I would say it is specialist, although in practice the approach was largely determined by {team} before they joined"}
+
+  p_4_10_decide_schedule:
+    supporting:
+      "Yes":
+        - "hours are set by us to fit the service rota"
+      "No - the worker solely decides":
+        - "they work when they choose; we only care that the deadline is met"
+      "No - the engager and the worker agree":
+        - "dates were agreed between them and {approver} at the start"
+      "No - the work is based on agreed deadlines":
+        - "delivery is against agreed milestones; the hours worked are up to them"
+        - "{deliverable} has a fixed completion date, but no set working pattern"
+    contradicting:
+      "No - the work is based on agreed deadlines":
+        - {type: direct_negation, subtlety: 1, text: "they are on site Monday to Friday, nine to five, for the duration"}
+        - {type: scope_qualification, subtlety: 2, text: "milestone driven, but they must attend the weekly team meeting and core hours apply"}
+        - {type: scope_qualification, subtlety: 3, text: "the deadlines are theirs to manage, though the teaching timetable fixes when they need to be here"}
+      "No - the worker solely decides":
+        - {type: direct_negation, subtlety: 1, text: "we set the shift pattern and they book on and off through the estates system"}
+        - {type: scope_qualification, subtlety: 2, text: "largely their choice, though access to {location} is only available during our published hours"}
+
+  p_4_11_decide_where:
+    supporting:
+      "Yes":
+        - "the work must be done at {location} and we specify this"
+      "No - the worker decides":
+        - "they work remotely or from their own premises as they prefer"
+      "No - the task sets the location":
+        - "the plant is at {location}, so the work has to happen there by its nature"
+      "No - some work has to be done in an agreed location and some can be done at the workers choice":
+        - "site work at {location}, write-up and analysis wherever they choose"
+    contradicting:
+      "No - the worker decides":
+        - {type: direct_negation, subtlety: 1, text: "all work must be carried out at {location} on our equipment"}
+        - {type: scope_qualification, subtlety: 2, text: "they have a desk in the department and are expected to be there for the working week"}
+        - {type: scope_qualification, subtlety: 3, text: "they choose where they work, but the data cannot leave {location} under our information security policy"}
+
+  # ---------------- financial risk ------------------------------------------
+  p_4_12_buys_equipment:
+    supporting:
+      "Yes":
+        - "they provide {equipment} at their own cost"
+        - "{equipment} already owned by their company and used for this work"
+      "No":
+        - "we provide everything they need for {deliverable}"
+    contradicting:
+      "Yes":
+        - {type: reimbursement_flip, subtlety: 1, text: "we provide all the equipment, they turn up and use ours"}
+        - {type: category_mismatch, subtlety: 2, text: "they use their own laptop and mobile phone for the work"}
+        - {type: category_mismatch, subtlety: 3, text: "they bought a docking station and a monitor for the home office setup, which they have not claimed back"}
+        - {type: reimbursement_flip, subtlety: 2, text: "they were issued with a University laptop and a building access card on day one"}
+
+  p_4_13_vehicle_costs:
+    supporting:
+      "Yes":
+        - "a specialist vehicle with an installed rig is required and is theirs"
+        - "they carry their own business insurance and plant cover on the van"
+      "No":
+        - "no vehicle costs arise beyond ordinary travel to {location}"
+    contradicting:
+      "Yes":
+        - {type: category_mismatch, subtlety: 2, text: "they drive in from Havenbridge each day, which is a fair distance"}
+        - {type: reimbursement_flip, subtlety: 1, text: "they claim mileage back from {budget_holder} at the standard rate"}
+        - {type: category_mismatch, subtlety: 3, text: "fuel and parking for the commute to {location} are a real cost to them over a {months}-month engagement"}
+
+  p_4_14_materials_unreimbursed:
+    supporting:
+      "Yes":
+        - "they supply {materials} at their own cost and this is not recharged"
+        - "{materials} are included in the fixed price and carry their margin risk"
+      "No":
+        - "we supply {materials} directly"
+    contradicting:
+      "Yes":
+        - {type: reimbursement_flip, subtlety: 1, text: "we reimburse {materials} in full on production of receipts"}
+        - {type: reimbursement_flip, subtlety: 2, text: "{materials} are recharged to {budget_holder} at cost, separately from the fee"}
+        - {type: reimbursement_flip, subtlety: 3, text: "they buy {materials} up front and invoice them alongside the fee, so the outlay is short-lived"}
+        - {type: scope_qualification, subtlety: 3, text: "only minor consumables, maybe {amount} across the whole engagement"}
+
+  p_4_15_other_costs:
+    supporting:
+      "Yes":
+        - "travel and accommodation for the site visits are met by them"
+        - "they hire external premises for the workshops at their own expense"
+      "No":
+        - "no other costs arise; everything is provided or booked by us"
+    contradicting:
+      "Yes":
+        - {type: reimbursement_flip, subtlety: 1, text: "we book and pay for travel and accommodation directly"}
+        - {type: reimbursement_flip, subtlety: 2, text: "any expenses are claimed back through our expenses system in the usual way"}
+
+  p_4_16_payment_basis:
+    supporting:
+      "An hourly/daily or weekly rate":
+        - "invoiced monthly at {amount} {rate_unit} against a timesheet"
+      "A fixed price for the project":
+        - "a fixed sum of {amount} for {deliverable}, invoiced on completion"
+        - "lump sum agreed up front; overruns are at their own risk"
+      "A fixed amount for each piece of work completed":
+        - "a set fee per session delivered, invoiced at the end of term"
+      "A percentage of the sales the worker generates":
+        - "commission on income generated by the programme"
+      "a percentage of the organisations profit or savings":
+        - "fee is a share of the savings identified, payable on realisation"
+    contradicting:
+      "A fixed price for the project":
+        - {type: category_mismatch, subtlety: 1, text: "invoiced monthly at {amount} {rate_unit} for the days worked"}
+        - {type: category_mismatch, subtlety: 2, text: "the total was built up from an estimated day count at {amount} {rate_unit}, and is reconciled against actual days at the end"}
+        - {type: category_mismatch, subtlety: 3, text: "a fixed sum in principle, though additional days beyond the estimate are payable at the same {rate_unit} rate"}
+      "A fixed amount for each piece of work completed":
+        - {type: category_mismatch, subtlety: 2, text: "paid for the hours they are on site, submitted through the timesheet system"}
+
+  p_4_17_put_right:
+    supporting:
+      "Yes - unpaid & they would have extra costs that the University would not pay for":
+        - "any defect is theirs to remedy at their own cost, including materials and return visits"
+      "Yes - unpaid but their only cost would be loss of opportunity to do other work":
+        - "they would redo the analysis at no charge, losing the time but nothing else"
+      "Yes - the worker would put it right in their usual hours at their usual rate or fee":
+        - "corrections would be handled within the normal engagement"
+      "No - the work is time-specific or for a single event":
+        - "the lecture is delivered on the day; it cannot be put right afterwards"
+      "No":
+        - "we would address any issues internally"
+    contradicting:
+      "Yes - unpaid & they would have extra costs that the University would not pay for":
+        - {type: category_mismatch, subtlety: 1, text: "they would put it right in their usual hours at their normal rate"}
+        - {type: reimbursement_flip, subtlety: 2, text: "we would pay for the additional time, as we would with any supplier"}
+        - {type: hedged_non_support, subtlety: 3, text: "it has not arisen, but I would expect it to be picked up as part of the ongoing work rather than charged separately"}
+
+  # ---------------- part and parcel -----------------------------------------
+  p_4_18_benefits:
+    supporting:
+      "No":
+        - "no benefits of any kind; they invoice for the work and nothing else"
+        - "not eligible for any University benefit as they are not employed"
+      "Yes":
+        - "they are included in the departmental health scheme for the period"
+    contradicting:
+      "No":
+        - {type: direct_negation, subtlety: 1, text: "they get the staff health insurance and gym membership like everyone else in {team}"}
+        - {type: scope_qualification, subtlety: 2, text: "they have a staff card which gives them library access and the staff discount in the refectory"}
+        - {type: scope_qualification, subtlety: 3, text: "site induction includes occupational health screening and they hold a parking permit for {location}"}
+
+  p_4_19_manages_staff:
+    supporting:
+      "No":
+        - "no responsibility for University staff; they deliver {deliverable} only"
+      "Yes":
+        - "they will appraise the two technicians working on the installation"
+    contradicting:
+      "No":
+        - {type: direct_negation, subtlety: 1, text: "they line manage two research assistants and sign off their timesheets"}
+        - {type: scope_qualification, subtlety: 2, text: "they supervise the postgraduate demonstrators on the module and feed into their reviews"}
+        - {type: scope_qualification, subtlety: 3, text: "they direct the day-to-day work of {team} on site, though formal HR matters stay with {approver}"}
+
+  p_4_20_identifies_as:
+    supporting:
+      "They work for the organisation (the University)":
+        - "students see them as a member of the teaching team"
+      "They are an independent worker acting on behalf of the organisation":
+        - "introduced as an external specialist working with the University on {deliverable}"
+      "They work for their own business":
+        - "they present as their own company throughout and use their own branding"
+        - "correspondence goes out under their company letterhead"
+      "This would not happen":
+        - "back-office work only; no contact with students or partners"
+    contradicting:
+      "They work for their own business":
+        - {type: direct_negation, subtlety: 1, text: "they use a sussex.ac.uk email address and a staff badge"}
+        - {type: category_mismatch, subtlety: 2, text: "they are introduced to students as part of {team} and appear on the department web page"}
+        - {type: category_mismatch, subtlety: 3, text: "their own company for contractual purposes, but on the ground they sign off correspondence with a University email signature"}
+      "This would not happen":
+        - {type: direct_negation, subtlety: 2, text: "they run the seminars, so they are in front of students every week"}
+
+  # ---------------- in business on own account ------------------------------
+  p_4_21_exclusivity_clause:
+    supporting:
+      "No":
+        - "no restriction; they work for several other clients concurrently"
+      "Yes":
+        - "an exclusivity clause applies for the duration of {deliverable}"
+    contradicting:
+      "No":
+        - {type: direct_negation, subtlety: 1, text: "they cannot take similar work with another institution while engaged here"}
+        - {type: scope_qualification, subtlety: 2, text: "no formal restriction, though the contract bars work with competing providers in the region"}
+        - {type: scope_qualification, subtlety: 3, text: "nothing in writing, but the volume of work here means other clients are not realistically possible"}
+
+  p_4_22_permission_required:
+    supporting:
+      "No":
+        - "they are free to take other work without reference to us"
+      "Yes":
+        - "other engagements must be cleared with {approver} first"
+    contradicting:
+      "No":
+        - {type: scope_qualification, subtlety: 2, text: "they must notify {approver} of any other engagement so we can check for conflicts"}
+        - {type: scope_qualification, subtlety: 3, text: "no permission as such, but a conflict of interest declaration is required before they take other work"}
+
+  p_4_23_ownership_rights:
+    supporting:
+      "Yes":
+        - "copyright arises in the teaching materials produced for {deliverable}"
+        - "the design drawings and the survey data both carry rights"
+      "No":
+        - "no IP arises; this is delivery of an existing service"
+    contradicting:
+      "No":
+        - {type: direct_negation, subtlety: 1, text: "copyright in the course materials and the recorded lectures is dealt with in the contract"}
+        - {type: scope_qualification, subtlety: 3, text: "nothing formal, though the analysis code they write for us would presumably belong to someone"}
+
+  p_4_24_rights_to_university:
+    supporting:
+      "Yes":
+        - "all rights in the work vest in the University under {contract_clause}"
+      "No":
+        - "they retain copyright and grant us a licence to use the materials"
+    contradicting:
+      "Yes":
+        - {type: direct_negation, subtlety: 1, text: "they keep the copyright and license it to us for teaching use"}
+        - {type: scope_qualification, subtlety: 2, text: "the University owns the deliverables, but their underlying methodology and templates remain theirs"}
+
+  p_4_25_option_to_buy_rights:
+    supporting:
+      "Yes":
+        - "we may acquire full rights for a further {amount} if we choose to"
+      "No":
+        - "no buy-out provision in the contract"
+    contradicting:
+      "Yes":
+        - {type: direct_negation, subtlety: 1, text: "no option to purchase; the licence is all we get"}
+      "No":
+        - {type: direct_negation, subtlety: 1, text: "we can buy the rights outright for an additional {amount} at the end"}
+        - {type: category_mismatch, subtlety: 3, text: "not a separate fee as such, though an extended licence is available at additional cost"}
+
+  p_4_30_majority_of_time:
+    supporting:
+      "No":
+        - "a few days a month at most; this is one of several clients"
+        - "{deliverable} accounts for a small share of their working year"
+      "Yes":
+        - "effectively full time for the {months} months of the engagement"
+    contradicting:
+      "No":
+        - {type: direct_negation, subtlety: 1, text: "full time, five days a week, for the whole {months} months"}
+        - {type: category_mismatch, subtlety: 2, text: "four days a week here, so this is their main engagement at present"}
+        - {type: category_mismatch, subtlety: 3, text: "around 0.8 FTE equivalent, which I understand is not unusual for this kind of contract"}
+
+  p_4_31_other_clients:
+    supporting:
+      "Yes":
+        - "they hold similar contracts with two other institutions this year"
+        - "an established consultancy with a portfolio of clients in the sector"
+      "No":
+        - "this is their first self-employed engagement of this kind"
+    contradicting:
+      "Yes":
+        - {type: direct_negation, subtlety: 1, text: "we are their only client at the moment"}
+        - {type: temporal_inconsistency, subtlety: 2, text: "they left their previous employer in March and set up the company shortly afterwards, so this is the first engagement"}
+        - {type: hedged_non_support, subtlety: 3, text: "I understand they have done similar work before, though not on a self-employed basis as far as I know"}
+
+  # ---------------- mutuality of obligation ---------------------------------
+  p_4_26_previous_contract:
+    supporting:
+      "No":
+        - "first engagement with the University"
+      "Yes":
+        - "they delivered the same module last academic year"
+    contradicting:
+      "No":
+        - {type: direct_negation, subtlety: 1, text: "they have delivered {deliverable} for the last three years"}
+        - {type: temporal_inconsistency, subtlety: 2, text: "new contract, though they did some work for a different School a while back"}
+        - {type: temporal_inconsistency, subtlety: 3, text: "the arrangement is renewed each academic year, so this is a fresh contract rather than a continuation"}
+
+  p_4_27_first_in_series:
+    supporting:
+      "Yes":
+        - "single engagement with no expectation of further work"
+      "No":
+        - "the fourth in a sequence of annual contracts"
+    contradicting:
+      "Yes":
+        - {type: temporal_inconsistency, subtlety: 1, text: "this is the fourth extension of the original arrangement"}
+        - {type: temporal_inconsistency, subtlety: 3, text: "first contract under the new framework, having previously been engaged under the old one"}
+
+  p_4_28_starts_immediately_after:
+    supporting:
+      "No":
+        - "there was a gap of several months since the last engagement"
+      "Yes":
+        - "runs on directly from the contract that ended in July"
+    contradicting:
+      "No":
+        - {type: temporal_inconsistency, subtlety: 1, text: "continues seamlessly from the contract that ended on 31 July"}
+        - {type: temporal_inconsistency, subtlety: 2, text: "the previous engagement finished at the end of the summer term and this one picks up in September"}
+        - {type: temporal_inconsistency, subtlety: 3, text: "a short break over the vacation, though the work carried on either side of it without interruption"}
+
+  p_4_29_extendable:
+    supporting:
+      "No":
+        - "fixed term with no extension provision"
+      "Yes":
+        - "extendable by mutual agreement for a further twelve months"
+    contradicting:
+      "No":
+        - {type: direct_negation, subtlety: 1, text: "there is an option to renew for a further year if it goes well"}
+        - {type: hedged_non_support, subtlety: 2, text: "nothing in the contract, but if funding allows we would expect to continue the arrangement"}
+        - {type: hedged_non_support, subtlety: 3, text: "no formal extension clause, though these engagements do tend to roll on in practice"}
+
+# -----------------------------------------------------------------------------
+# IDENTITY MENTIONS
+# Managers name the individual in justification boxes. It is the single most
+# common way personal data ends up in a field the schema classifies as carrying
+# none, and it is the exact case the de-identifier's gazetteer exists for.
+#
+# Including it in the corpus means the highest-risk de-identification path is
+# exercised on real generated records rather than only in unit tests. It also
+# makes the text more realistic: a manager arguing that substitution is
+# impossible almost always names the person they cannot replace.
+# -----------------------------------------------------------------------------
+identity_mentions:
+  - "{title} {surname} has confirmed this."
+  - "This was agreed directly with {first} {surname}."
+  - "{surname} raised no concerns when we discussed it."
+  - "{first} {surname} is the named delivery lead."
+  - "I have discussed this with {title} {surname}."
+
+# -----------------------------------------------------------------------------
+# NON-RESPONSIVE JUSTIFICATIONS
+# Anomalies, not contradictions. Labelled separately so Phase 4 can report them
+# apart — scoring a blank box as a contradiction would flatter the detector.
+# -----------------------------------------------------------------------------
+non_responsive:
+  - "n/a"
+  - "See above."
+  - "As discussed."
+  - "Standard arrangement."
+  - "Please see attached."
+  - "-"
+  - "Same as previous question."
+  - "This is a routine engagement for {budget_holder}."
+
+# -----------------------------------------------------------------------------
+# DUTIES NARRATIVE (q4_00_duties_narrative)
+# Document-level free text. Not paired with any single structured answer, so it
+# is handled by the cross-field detector rather than the paired one.
+# -----------------------------------------------------------------------------
+duties_narrative:
+  openings:
+    - "{role_noun} has been engaged to deliver {deliverable}."
+    - "This engagement covers {deliverable}."
+    - "We require specialist input on {deliverable}."
+  bodies:
+    - "The work is outcome focussed and will be delivered over approximately {months} months."
+    - "Delivery is against a defined specification agreed with {approver}."
+    - "The scope is set out in {contract_clause} and has been agreed with {budget_holder}."
+    - "Work will be carried out partly at {location} and partly at their own premises."
+  closings:
+    - "No University staff are line managed as part of this engagement."
+    - "The output will be handed over to {team} on completion."
+    - "Progress is reviewed at agreed milestones."

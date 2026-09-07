@@ -161,6 +161,9 @@ class Deidentifier:
         self.detectors: Sequence[str] = tuple(
             entity_cfg.get("detectors", _DEFAULT_DETECTORS)
         )
+        self._name_groups: Sequence[Sequence[str]] = tuple(
+            tuple(group) for group in cfg.get("name_groups", ())
+        )
         self._salt = os.environ.get(
             str(cfg.get("salt_env_var", "IR35_DEID_SALT")),
             str(cfg.get("development_salt", "phase1-synthetic-only")),
@@ -261,6 +264,10 @@ class Deidentifier:
         "Bera Kirkwell" is found in free text as "Kirkwell" alone.
         """
         terms: list[str] = []
+        for group in self._name_groups:
+            parts = [str(record[fid]).strip() for fid in group if record.get(fid)]
+            if len(parts) > 1:
+                terms.append(" ".join(parts))
         for f in self.schema.pii_fields:
             if f.pii_class is PIIClass.QUASI_IDENTIFIER:
                 continue

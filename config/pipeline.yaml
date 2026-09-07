@@ -65,6 +65,14 @@ deidentification:
   salt_env_var: IR35_DEID_SALT
   development_salt: "phase1-synthetic-only"
 
+  # Fields that combine into one person's name. The gazetteer matches the
+  # joined form first, so "Casian Ashwood" becomes a single [PERSON_1] rather
+  # than "[PERSON_2] [PERSON_1]". Cosmetic for privacy — both are removed
+  # either way — but it keeps scrubbed text readable, and a reviewer who cannot
+  # read the justification cannot review it.
+  name_groups:
+    - [q1_02_first_name, q1_03_surname]
+
   # Cohort variables kept in pseudonymised form because Phase 4's disparity
   # analysis needs them. Throwing them away would make the fairness testing
   # impossible, which is a worse outcome than holding a salted hash.
