@@ -1,0 +1,126 @@
+# =============================================================================
+# PHASE 5 — REVIEWER INTERFACE CONFIGURATION
+# =============================================================================
+# Governs what the Streamlit reviewer app shows and how it shows it. Nothing
+# in src/ui or src/review may hardcode a score threshold, a band label or a
+# field name — this file, schema.yaml and contradiction_pairs.yaml are the only
+# places those live. Pointing the interface at a re-tuned detector, or wording
+# the reviewer guidance differently, is a config edit.
+#
+# WHY BANDS, NOT PERCENTAGES
+# Phase 4's calibration check found the rule baseline overstates itself badly:
+# it predicts ~0.46 where the true rate in that score range was ~0.11. Showing
+# "46% confidence" to a reviewer would be showing them a number that is wrong
+# by a factor of four. `confidence_bands` below convert a raw score into a
+# label backed by what was actually observed for scores in that range during
+# Phase 4 evaluation — a defensible rank, not a false precision.
+#
+# Bands are listed low-to-high; a score is placed in the highest band whose
+# `min_score` it clears. A score below every band's `min_score` is not shown
+# to the reviewer at all — below that point the detector found no evidence
+# worth a person's time.
+# =============================================================================
+
+detectors:
+  # Which detector variants the app offers, in menu order. Each name must
+  # match a RuleBaseline/TfidfBaseline variant this app knows how to build —
+  # see src/review/assess.py:build_detector(). The rule baseline needs no
+  # fitting; the TF-IDF baseline is fitted on the synthetic corpus at app
+  # start-up as a DEMONSTRATION convenience only (see phase5 report,
+  # "what changes for real data" — production would load a persisted,
+  # validated model artefact instead of fitting one in-process on launch).
+  available:
+    - rules_as_authored
+    - rules_phrase_deleaked
+    - tfidf_logreg
+  default: rules_as_authored
+
+  confidence_bands:
+    rules_as_authored:
+      - min_score: 0.3543   # Phase 4 chosen operating point (record split)
+        label: "Worth a look"
+        rationale: >-
+          In testing, about 1 flag in 40 at this level turned out to be a
+          genuine planted contradiction.
+      - min_score: 0.42
+        label: "Priority"
+        rationale: >-
+          In testing, about 1 flag in 9 at this level turned out to be a
+          genuine planted contradiction — noticeably more often than the
+          "Worth a look" band.
+    rules_phrase_deleaked:
+      # Same evidence surface, cues stripped of anything verbatim from the
+      # Phase 0 text bank. Slightly more conservative in practice.
+      - min_score: 0.30
+        label: "Worth a look"
+        rationale: >-
+          A phrase fired that argues against the selected answer. This
+          variant's cue list has anything copied word-for-word from the
+          training text removed, so it leans on more general vocabulary.
+      - min_score: 0.42
+        label: "Priority"
+        rationale: >-
+          Multiple independent phrases fired, which in testing corresponded
+          to a real contradiction noticeably more often than a single hit.
+    tfidf_logreg:
+      - min_score: 0.0726   # Phase 4 chosen operating point (record split)
+        label: "Worth a look"
+        rationale: >-
+          In testing, about 1 flag in 34 at this level turned out to be a
+          genuine planted contradiction.
+      - min_score: 0.18
+        label: "Priority"
+        rationale: >-
+          In testing, about 1 flag in 8 at this level turned out to be a
+          genuine planted contradiction.
+      - min_score: 0.60
+        label: "High priority"
+        rationale: >-
+          Scores this high were rare in testing and, when they occurred,
+          were almost always a genuine contradiction — but this comes from a
+          small number of cases, so treat it as a strong hint, not a
+          certainty.
+
+  # A reminder shown next to every band, everywhere, so it survives being
+  # read in isolation.
+  band_disclaimer: >-
+    This is a rank based on past testing, not a probability for this specific
+    case. It tells you where to look first — it is not a measure of how
+    likely this particular answer is to be wrong.
+
+# -----------------------------------------------------------------------------
+# Sample submissions offered in the app for demonstration, since there is no
+# live feed of real ESQ submissions to paste from. Picked to show a spread:
+# a clean record, a record with an obvious planted contradiction, and one
+# with a subtle one. Record ids refer to data/synthetic/esq_synthetic_v1.jsonl.
+# -----------------------------------------------------------------------------
+sample_records:
+  enabled: true
+  n_offered: 12
+
+# -----------------------------------------------------------------------------
+# Reviewer decision capture. See src/review/decision_log.py.
+# -----------------------------------------------------------------------------
+decision_log:
+  path: data/reviewer_decisions/decisions.jsonl
+  # Same posture as constraint 4 (config/pipeline.yaml logging.log_content):
+  # a reviewer's free-text reason is content, not metadata, and is redacted
+  # to a digest by default. Flip only in an environment that has not seen a
+  # real submission.
+  log_reason_content: false
+  reason_max_chars: 500
+
+# -----------------------------------------------------------------------------
+# Section labels for grouping flags on screen, keyed by IR35 test id from
+# schema.yaml. Falls back to the test's own `label` if a test id is missing
+# here, so adding a test to the schema without touching this file still works.
+# -----------------------------------------------------------------------------
+test_section_order:
+  - office_holder
+  - substitution
+  - control
+  - financial_risk
+  - part_and_parcel
+  - business_on_own_account
+  - mutuality_of_obligation
+  - contract_basis

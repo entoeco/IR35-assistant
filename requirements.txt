@@ -22,3 +22,6 @@ openpyxl==3.1.5
 #   pip install torch --index-url https://download.pytorch.org/whl/cpu
 torch==2.14.0+cu130
 transformers==5.16.1
+
+# Phase 5 reviewer interface.
+streamlit==1.63.0

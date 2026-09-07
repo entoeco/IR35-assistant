@@ -6,6 +6,10 @@ venv/
 .env
 .DS_Store
 data/real/
+
+# Phase 5 reviewer decision log: operational output of running the app, not
+# a project artefact. Location is set in config/review.yaml.
+data/reviewer_decisions/
 *.xlsx
 !config/*.xlsx
 .ipynb_checkpoints/

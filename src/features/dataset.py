@@ -37,7 +37,13 @@ from typing import Any, Iterable, Iterator, Mapping, Sequence
 
 from src.ingest.schema_loader import Schema
 
-__all__ = ["PairInstance", "build_instances", "load_corpus", "instance_summary"]
+__all__ = [
+    "PairInstance",
+    "build_instances",
+    "build_instances_single",
+    "load_corpus",
+    "instance_summary",
+]
 
 
 @dataclass(frozen=True)
@@ -194,6 +200,54 @@ def build_instances(
                     ir35_label=str(row["ir35_label"]),
                 )
             )
+    return instances
+
+
+def build_instances_single(schema: Schema, record: Mapping[str, Any]) -> list[PairInstance]:
+    """Build pair instances for one live record with no ground truth.
+
+    Phase 5's reviewer app scores a submission nobody has labelled — there is
+    no ``truth`` row and no generator ``state``, because this record was not
+    generated, it was submitted. This is the same per-pair walk as
+    :func:`build_instances`, with the fields that only ever come from Phase 1's
+    synthetic pipeline (label, contradiction type, subtlety, unit key,
+    archetype, register, ir35 label) filled with honest "unknown" values
+    rather than omitted, so a detector fitted on the corpus and a live
+    submission produce the same shape of instance.
+
+    Args:
+        schema: The loaded data contract.
+        record: One de-identified, validated record. Field id -> value.
+
+    Returns:
+        One instance per pair whose structured question was answered, in
+        schema order.
+    """
+    instances: list[PairInstance] = []
+    for pair in schema.pairs.values():
+        value = record.get(pair.structured)
+        if value in (None, ""):
+            continue
+        instances.append(
+            PairInstance(
+                record_id=str(record.get("record_id", "unknown")),
+                pair_id=pair.id,
+                structured_field=pair.structured,
+                free_text_field=pair.free_text,
+                ir35_test=pair.ir35_test,
+                structured_value=str(value),
+                free_text=str(record.get(pair.free_text, "") or ""),
+                is_outside_leaning=(value == pair.outside_leaning),
+                label=0,
+                contradiction_type=None,
+                subtlety=None,
+                unit_key="",
+                anomaly=None,
+                archetype=str(record.get("archetype", "unknown")),
+                register=str(record.get("register", "unknown")),
+                ir35_label="unknown",
+            )
+        )
     return instances
 
 

@@ -1,0 +1,19 @@
+# Streamlit server/client configuration for the Phase 5 reviewer app.
+# Read automatically by `streamlit run` — no CLI flags needed for a normal
+# local run, which matters for the Phase 6 "clean clone -> install -> run"
+# gate.
+
+[client]
+# Removes Streamlit's own "Deploy" button and hamburger menu from the page.
+# These are platform chrome, not part of this app's task flow, and — found
+# during the Phase 5 keyboard walkthrough — they sit in the tab order ahead
+# of the app's own skip link, adding two keystrokes of pure noise before a
+# keyboard user reaches anything the app actually does. "minimal" is the
+# closest this config option gets to removing them from the tab order
+# entirely; see docs/reports/phase5_interface_report.md, "known platform
+# limitation" for what this does and does not fix.
+toolbarMode = "minimal"
+showSidebarNavigation = true
+
+[browser]
+gatherUsageStats = false
