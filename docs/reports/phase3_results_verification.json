@@ -1,0 +1,964 @@
+{
+  "backend": {
+    "backend": "mock",
+    "is_local": true,
+    "model": ""
+  },
+  "is_verification_run": true,
+  "dataset": {
+    "n_instances": 9918,
+    "n_records": 350,
+    "n_pairs": 31,
+    "n_positive": 70,
+    "positive_rate": 0.00706,
+    "instances_per_record": 28.3,
+    "n_blank_or_non_responsive": 16,
+    "n_unusable_text": 11,
+    "by_contradiction_type": {
+      "category_mismatch": 9,
+      "direct_negation": 10,
+      "hedged_non_support": 10,
+      "named_person_dependency": 10,
+      "reimbursement_flip": 10,
+      "scope_qualification": 11,
+      "temporal_inconsistency": 10
+    },
+    "by_subtlety": {
+      "1": 23,
+      "2": 34,
+      "3": 13
+    },
+    "n_distinct_units": 140
+  },
+  "target_recall": 0.8,
+  "results": [
+    {
+      "method": "nli_cross_encoder",
+      "split": "record",
+      "n_instances": 9918,
+      "n_positive": 70,
+      "n_records": 350,
+      "pr_auc": 0.0081,
+      "roc_auc": 0.5139,
+      "macro_f1": 0.1739,
+      "brier": 0.0887,
+      "chosen": {
+        "threshold": 0.1172,
+        "precision": 0.0071,
+        "recall": 0.8,
+        "f1": 0.014,
+        "n_flags": 7929,
+        "flags_per_record": 22.65,
+        "true_positives": 56,
+        "missed": 14
+      },
+      "by_type": {
+        "category_mismatch": {
+          "n": 9,
+          "caught": 7,
+          "recall": 0.7778
+        },
+        "direct_negation": {
+          "n": 10,
+          "caught": 5,
+          "recall": 0.5
+        },
+        "hedged_non_support": {
+          "n": 10,
+          "caught": 6,
+          "recall": 0.6
+        },
+        "named_person_dependency": {
+          "n": 10,
+          "caught": 9,
+          "recall": 0.9
+        },
+        "reimbursement_flip": {
+          "n": 10,
+          "caught": 9,
+          "recall": 0.9
+        },
+        "scope_qualification": {
+          "n": 11,
+          "caught": 11,
+          "recall": 1.0
+        },
+        "temporal_inconsistency": {
+          "n": 10,
+          "caught": 9,
+          "recall": 0.9
+        }
+      },
+      "by_subtlety": {
+        "1": {
+          "n": 23,
+          "caught": 17,
+          "recall": 0.7391
+        },
+        "2": {
+          "n": 34,
+          "caught": 29,
+          "recall": 0.8529
+        },
+        "3": {
+          "n": 13,
+          "caught": 10,
+          "recall": 0.7692
+        }
+      },
+      "by_archetype": {
+        "it_contractor": {
+          "n": 23,
+          "caught": 17,
+          "recall": 0.7391
+        },
+        "research_consultant": {
+          "n": 18,
+          "caught": 13,
+          "recall": 0.7222
+        },
+        "technical_trades": {
+          "n": 13,
+          "caught": 10,
+          "recall": 0.7692
+        },
+        "visiting_lecturer": {
+          "n": 16,
+          "caught": 16,
+          "recall": 1.0
+        }
+      },
+      "by_register": {
+        "hedged": {
+          "n": 24,
+          "caught": 22,
+          "recall": 0.9167
+        },
+        "terse": {
+          "n": 27,
+          "caught": 18,
+          "recall": 0.6667
+        },
+        "verbose": {
+          "n": 19,
+          "caught": 16,
+          "recall": 0.8421
+        }
+      },
+      "notes": []
+    },
+    {
+      "method": "fewshot_llm",
+      "split": "record",
+      "n_instances": 9918,
+      "n_positive": 70,
+      "n_records": 350,
+      "pr_auc": 0.0086,
+      "roc_auc": 0.5356,
+      "macro_f1": 0.4634,
+      "brier": 0.03502,
+      "chosen": {
+        "threshold": 0.2625,
+        "precision": 0.0098,
+        "recall": 0.2286,
+        "f1": 0.0188,
+        "n_flags": 1632,
+        "flags_per_record": 4.66,
+        "true_positives": 16,
+        "missed": 54
+      },
+      "by_type": {
+        "category_mismatch": {
+          "n": 9,
+          "caught": 0,
+          "recall": 0.0
+        },
+        "direct_negation": {
+          "n": 10,
+          "caught": 1,
+          "recall": 0.1
+        },
+        "hedged_non_support": {
+          "n": 10,
+          "caught": 3,
+          "recall": 0.3
+        },
+        "named_person_dependency": {
+          "n": 10,
+          "caught": 6,
+          "recall": 0.6
+        },
+        "reimbursement_flip": {
+          "n": 10,
+          "caught": 3,
+          "recall": 0.3
+        },
+        "scope_qualification": {
+          "n": 11,
+          "caught": 1,
+          "recall": 0.0909
+        },
+        "temporal_inconsistency": {
+          "n": 10,
+          "caught": 2,
+          "recall": 0.2
+        }
+      },
+      "by_subtlety": {
+        "1": {
+          "n": 23,
+          "caught": 6,
+          "recall": 0.2609
+        },
+        "2": {
+          "n": 34,
+          "caught": 9,
+          "recall": 0.2647
+        },
+        "3": {
+          "n": 13,
+          "caught": 1,
+          "recall": 0.0769
+        }
+      },
+      "by_archetype": {
+        "it_contractor": {
+          "n": 23,
+          "caught": 6,
+          "recall": 0.2609
+        },
+        "research_consultant": {
+          "n": 18,
+          "caught": 3,
+          "recall": 0.1667
+        },
+        "technical_trades": {
+          "n": 13,
+          "caught": 1,
+          "recall": 0.0769
+        },
+        "visiting_lecturer": {
+          "n": 16,
+          "caught": 6,
+          "recall": 0.375
+        }
+      },
+      "by_register": {
+        "hedged": {
+          "n": 24,
+          "caught": 12,
+          "recall": 0.5
+        },
+        "terse": {
+          "n": 27,
+          "caught": 0,
+          "recall": 0.0
+        },
+        "verbose": {
+          "n": 19,
+          "caught": 4,
+          "recall": 0.2105
+        }
+      },
+      "notes": [
+        "Recall target 80% is unreachable at any threshold; the best achievable is 23%. Reported at that point."
+      ]
+    },
+    {
+      "method": "rules_as_authored",
+      "split": "record",
+      "n_instances": 9918,
+      "n_positive": 70,
+      "n_records": 350,
+      "pr_auc": 0.5679,
+      "roc_auc": 0.7973,
+      "macro_f1": 0.6857,
+      "brier": 0.00496,
+      "chosen": {
+        "threshold": 0.3543,
+        "precision": 0.2763,
+        "recall": 0.6,
+        "f1": 0.3784,
+        "n_flags": 152,
+        "flags_per_record": 0.43,
+        "true_positives": 42,
+        "missed": 28
+      },
+      "by_type": {
+        "category_mismatch": {
+          "n": 9,
+          "caught": 8,
+          "recall": 0.8889
+        },
+        "direct_negation": {
+          "n": 10,
+          "caught": 8,
+          "recall": 0.8
+        },
+        "hedged_non_support": {
+          "n": 10,
+          "caught": 2,
+          "recall": 0.2
+        },
+        "named_person_dependency": {
+          "n": 10,
+          "caught": 4,
+          "recall": 0.4
+        },
+        "reimbursement_flip": {
+          "n": 10,
+          "caught": 6,
+          "recall": 0.6
+        },
+        "scope_qualification": {
+          "n": 11,
+          "caught": 8,
+          "recall": 0.7273
+        },
+        "temporal_inconsistency": {
+          "n": 10,
+          "caught": 6,
+          "recall": 0.6
+        }
+      },
+      "by_subtlety": {
+        "1": {
+          "n": 23,
+          "caught": 15,
+          "recall": 0.6522
+        },
+        "2": {
+          "n": 34,
+          "caught": 22,
+          "recall": 0.6471
+        },
+        "3": {
+          "n": 13,
+          "caught": 5,
+          "recall": 0.3846
+        }
+      },
+      "by_archetype": {
+        "it_contractor": {
+          "n": 23,
+          "caught": 17,
+          "recall": 0.7391
+        },
+        "research_consultant": {
+          "n": 18,
+          "caught": 10,
+          "recall": 0.5556
+        },
+        "technical_trades": {
+          "n": 13,
+          "caught": 7,
+          "recall": 0.5385
+        },
+        "visiting_lecturer": {
+          "n": 16,
+          "caught": 8,
+          "recall": 0.5
+        }
+      },
+      "by_register": {
+        "hedged": {
+          "n": 24,
+          "caught": 16,
+          "recall": 0.6667
+        },
+        "terse": {
+          "n": 27,
+          "caught": 16,
+          "recall": 0.5926
+        },
+        "verbose": {
+          "n": 19,
+          "caught": 10,
+          "recall": 0.5263
+        }
+      },
+      "notes": [
+        "Recall target 80% is unreachable at any threshold; the best achievable is 60%. Reported at that point."
+      ]
+    },
+    {
+      "method": "tfidf_logreg",
+      "split": "record",
+      "n_instances": 9918,
+      "n_positive": 70,
+      "n_records": 350,
+      "pr_auc": 0.7331,
+      "roc_auc": 0.9513,
+      "macro_f1": 0.6119,
+      "brier": 0.00349,
+      "chosen": {
+        "threshold": 0.087,
+        "precision": 0.1425,
+        "recall": 0.8,
+        "f1": 0.2419,
+        "n_flags": 393,
+        "flags_per_record": 1.12,
+        "true_positives": 56,
+        "missed": 14
+      },
+      "by_type": {
+        "category_mismatch": {
+          "n": 9,
+          "caught": 7,
+          "recall": 0.7778
+        },
+        "direct_negation": {
+          "n": 10,
+          "caught": 8,
+          "recall": 0.8
+        },
+        "hedged_non_support": {
+          "n": 10,
+          "caught": 9,
+          "recall": 0.9
+        },
+        "named_person_dependency": {
+          "n": 10,
+          "caught": 8,
+          "recall": 0.8
+        },
+        "reimbursement_flip": {
+          "n": 10,
+          "caught": 9,
+          "recall": 0.9
+        },
+        "scope_qualification": {
+          "n": 11,
+          "caught": 6,
+          "recall": 0.5455
+        },
+        "temporal_inconsistency": {
+          "n": 10,
+          "caught": 9,
+          "recall": 0.9
+        }
+      },
+      "by_subtlety": {
+        "1": {
+          "n": 23,
+          "caught": 17,
+          "recall": 0.7391
+        },
+        "2": {
+          "n": 34,
+          "caught": 29,
+          "recall": 0.8529
+        },
+        "3": {
+          "n": 13,
+          "caught": 10,
+          "recall": 0.7692
+        }
+      },
+      "by_archetype": {
+        "it_contractor": {
+          "n": 23,
+          "caught": 17,
+          "recall": 0.7391
+        },
+        "research_consultant": {
+          "n": 18,
+          "caught": 16,
+          "recall": 0.8889
+        },
+        "technical_trades": {
+          "n": 13,
+          "caught": 8,
+          "recall": 0.6154
+        },
+        "visiting_lecturer": {
+          "n": 16,
+          "caught": 15,
+          "recall": 0.9375
+        }
+      },
+      "by_register": {
+        "hedged": {
+          "n": 24,
+          "caught": 19,
+          "recall": 0.7917
+        },
+        "terse": {
+          "n": 27,
+          "caught": 23,
+          "recall": 0.8519
+        },
+        "verbose": {
+          "n": 19,
+          "caught": 14,
+          "recall": 0.7368
+        }
+      },
+      "notes": []
+    },
+    {
+      "method": "nli_cross_encoder",
+      "split": "unit",
+      "n_instances": 9918,
+      "n_positive": 70,
+      "n_records": 350,
+      "pr_auc": 0.0081,
+      "roc_auc": 0.5139,
+      "macro_f1": 0.1739,
+      "brier": 0.0887,
+      "chosen": {
+        "threshold": 0.1172,
+        "precision": 0.0071,
+        "recall": 0.8,
+        "f1": 0.014,
+        "n_flags": 7929,
+        "flags_per_record": 22.65,
+        "true_positives": 56,
+        "missed": 14
+      },
+      "by_type": {
+        "category_mismatch": {
+          "n": 9,
+          "caught": 7,
+          "recall": 0.7778
+        },
+        "direct_negation": {
+          "n": 10,
+          "caught": 5,
+          "recall": 0.5
+        },
+        "hedged_non_support": {
+          "n": 10,
+          "caught": 6,
+          "recall": 0.6
+        },
+        "named_person_dependency": {
+          "n": 10,
+          "caught": 9,
+          "recall": 0.9
+        },
+        "reimbursement_flip": {
+          "n": 10,
+          "caught": 9,
+          "recall": 0.9
+        },
+        "scope_qualification": {
+          "n": 11,
+          "caught": 11,
+          "recall": 1.0
+        },
+        "temporal_inconsistency": {
+          "n": 10,
+          "caught": 9,
+          "recall": 0.9
+        }
+      },
+      "by_subtlety": {
+        "1": {
+          "n": 23,
+          "caught": 17,
+          "recall": 0.7391
+        },
+        "2": {
+          "n": 34,
+          "caught": 29,
+          "recall": 0.8529
+        },
+        "3": {
+          "n": 13,
+          "caught": 10,
+          "recall": 0.7692
+        }
+      },
+      "by_archetype": {
+        "it_contractor": {
+          "n": 23,
+          "caught": 17,
+          "recall": 0.7391
+        },
+        "research_consultant": {
+          "n": 18,
+          "caught": 13,
+          "recall": 0.7222
+        },
+        "technical_trades": {
+          "n": 13,
+          "caught": 10,
+          "recall": 0.7692
+        },
+        "visiting_lecturer": {
+          "n": 16,
+          "caught": 16,
+          "recall": 1.0
+        }
+      },
+      "by_register": {
+        "hedged": {
+          "n": 24,
+          "caught": 22,
+          "recall": 0.9167
+        },
+        "terse": {
+          "n": 27,
+          "caught": 18,
+          "recall": 0.6667
+        },
+        "verbose": {
+          "n": 19,
+          "caught": 16,
+          "recall": 0.8421
+        }
+      },
+      "notes": []
+    },
+    {
+      "method": "fewshot_llm",
+      "split": "unit",
+      "n_instances": 9918,
+      "n_positive": 70,
+      "n_records": 350,
+      "pr_auc": 0.0086,
+      "roc_auc": 0.5356,
+      "macro_f1": 0.4634,
+      "brier": 0.03502,
+      "chosen": {
+        "threshold": 0.2625,
+        "precision": 0.0098,
+        "recall": 0.2286,
+        "f1": 0.0188,
+        "n_flags": 1632,
+        "flags_per_record": 4.66,
+        "true_positives": 16,
+        "missed": 54
+      },
+      "by_type": {
+        "category_mismatch": {
+          "n": 9,
+          "caught": 0,
+          "recall": 0.0
+        },
+        "direct_negation": {
+          "n": 10,
+          "caught": 1,
+          "recall": 0.1
+        },
+        "hedged_non_support": {
+          "n": 10,
+          "caught": 3,
+          "recall": 0.3
+        },
+        "named_person_dependency": {
+          "n": 10,
+          "caught": 6,
+          "recall": 0.6
+        },
+        "reimbursement_flip": {
+          "n": 10,
+          "caught": 3,
+          "recall": 0.3
+        },
+        "scope_qualification": {
+          "n": 11,
+          "caught": 1,
+          "recall": 0.0909
+        },
+        "temporal_inconsistency": {
+          "n": 10,
+          "caught": 2,
+          "recall": 0.2
+        }
+      },
+      "by_subtlety": {
+        "1": {
+          "n": 23,
+          "caught": 6,
+          "recall": 0.2609
+        },
+        "2": {
+          "n": 34,
+          "caught": 9,
+          "recall": 0.2647
+        },
+        "3": {
+          "n": 13,
+          "caught": 1,
+          "recall": 0.0769
+        }
+      },
+      "by_archetype": {
+        "it_contractor": {
+          "n": 23,
+          "caught": 6,
+          "recall": 0.2609
+        },
+        "research_consultant": {
+          "n": 18,
+          "caught": 3,
+          "recall": 0.1667
+        },
+        "technical_trades": {
+          "n": 13,
+          "caught": 1,
+          "recall": 0.0769
+        },
+        "visiting_lecturer": {
+          "n": 16,
+          "caught": 6,
+          "recall": 0.375
+        }
+      },
+      "by_register": {
+        "hedged": {
+          "n": 24,
+          "caught": 12,
+          "recall": 0.5
+        },
+        "terse": {
+          "n": 27,
+          "caught": 0,
+          "recall": 0.0
+        },
+        "verbose": {
+          "n": 19,
+          "caught": 4,
+          "recall": 0.2105
+        }
+      },
+      "notes": [
+        "Recall target 80% is unreachable at any threshold; the best achievable is 23%. Reported at that point."
+      ]
+    },
+    {
+      "method": "rules_as_authored",
+      "split": "unit",
+      "n_instances": 9918,
+      "n_positive": 70,
+      "n_records": 350,
+      "pr_auc": 0.5679,
+      "roc_auc": 0.7973,
+      "macro_f1": 0.6857,
+      "brier": 0.00496,
+      "chosen": {
+        "threshold": 0.3543,
+        "precision": 0.2763,
+        "recall": 0.6,
+        "f1": 0.3784,
+        "n_flags": 152,
+        "flags_per_record": 0.43,
+        "true_positives": 42,
+        "missed": 28
+      },
+      "by_type": {
+        "category_mismatch": {
+          "n": 9,
+          "caught": 8,
+          "recall": 0.8889
+        },
+        "direct_negation": {
+          "n": 10,
+          "caught": 8,
+          "recall": 0.8
+        },
+        "hedged_non_support": {
+          "n": 10,
+          "caught": 2,
+          "recall": 0.2
+        },
+        "named_person_dependency": {
+          "n": 10,
+          "caught": 4,
+          "recall": 0.4
+        },
+        "reimbursement_flip": {
+          "n": 10,
+          "caught": 6,
+          "recall": 0.6
+        },
+        "scope_qualification": {
+          "n": 11,
+          "caught": 8,
+          "recall": 0.7273
+        },
+        "temporal_inconsistency": {
+          "n": 10,
+          "caught": 6,
+          "recall": 0.6
+        }
+      },
+      "by_subtlety": {
+        "1": {
+          "n": 23,
+          "caught": 15,
+          "recall": 0.6522
+        },
+        "2": {
+          "n": 34,
+          "caught": 22,
+          "recall": 0.6471
+        },
+        "3": {
+          "n": 13,
+          "caught": 5,
+          "recall": 0.3846
+        }
+      },
+      "by_archetype": {
+        "it_contractor": {
+          "n": 23,
+          "caught": 17,
+          "recall": 0.7391
+        },
+        "research_consultant": {
+          "n": 18,
+          "caught": 10,
+          "recall": 0.5556
+        },
+        "technical_trades": {
+          "n": 13,
+          "caught": 7,
+          "recall": 0.5385
+        },
+        "visiting_lecturer": {
+          "n": 16,
+          "caught": 8,
+          "recall": 0.5
+        }
+      },
+      "by_register": {
+        "hedged": {
+          "n": 24,
+          "caught": 16,
+          "recall": 0.6667
+        },
+        "terse": {
+          "n": 27,
+          "caught": 16,
+          "recall": 0.5926
+        },
+        "verbose": {
+          "n": 19,
+          "caught": 10,
+          "recall": 0.5263
+        }
+      },
+      "notes": [
+        "Recall target 80% is unreachable at any threshold; the best achievable is 60%. Reported at that point."
+      ]
+    },
+    {
+      "method": "tfidf_logreg",
+      "split": "unit",
+      "n_instances": 9918,
+      "n_positive": 70,
+      "n_records": 350,
+      "pr_auc": 0.0235,
+      "roc_auc": 0.6362,
+      "macro_f1": 0.3567,
+      "brier": 0.14395,
+      "chosen": {
+        "threshold": 0.0628,
+        "precision": 0.0119,
+        "recall": 0.8,
+        "f1": 0.0234,
+        "n_flags": 4710,
+        "flags_per_record": 13.46,
+        "true_positives": 56,
+        "missed": 14
+      },
+      "by_type": {
+        "category_mismatch": {
+          "n": 9,
+          "caught": 7,
+          "recall": 0.7778
+        },
+        "direct_negation": {
+          "n": 10,
+          "caught": 9,
+          "recall": 0.9
+        },
+        "hedged_non_support": {
+          "n": 10,
+          "caught": 7,
+          "recall": 0.7
+        },
+        "named_person_dependency": {
+          "n": 10,
+          "caught": 5,
+          "recall": 0.5
+        },
+        "reimbursement_flip": {
+          "n": 10,
+          "caught": 10,
+          "recall": 1.0
+        },
+        "scope_qualification": {
+          "n": 11,
+          "caught": 9,
+          "recall": 0.8182
+        },
+        "temporal_inconsistency": {
+          "n": 10,
+          "caught": 9,
+          "recall": 0.9
+        }
+      },
+      "by_subtlety": {
+        "1": {
+          "n": 23,
+          "caught": 21,
+          "recall": 0.913
+        },
+        "2": {
+          "n": 34,
+          "caught": 23,
+          "recall": 0.6765
+        },
+        "3": {
+          "n": 13,
+          "caught": 12,
+          "recall": 0.9231
+        }
+      },
+      "by_archetype": {
+        "it_contractor": {
+          "n": 23,
+          "caught": 21,
+          "recall": 0.913
+        },
+        "research_consultant": {
+          "n": 18,
+          "caught": 15,
+          "recall": 0.8333
+        },
+        "technical_trades": {
+          "n": 13,
+          "caught": 12,
+          "recall": 0.9231
+        },
+        "visiting_lecturer": {
+          "n": 16,
+          "caught": 8,
+          "recall": 0.5
+        }
+      },
+      "by_register": {
+        "hedged": {
+          "n": 24,
+          "caught": 17,
+          "recall": 0.7083
+        },
+        "terse": {
+          "n": 27,
+          "caught": 25,
+          "recall": 0.9259
+        },
+        "verbose": {
+          "n": 19,
+          "caught": 14,
+          "recall": 0.7368
+        }
+      },
+      "notes": []
+    }
+  ]
+}

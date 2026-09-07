@@ -10,3 +10,6 @@ data/real/
 !config/*.xlsx
 .ipynb_checkpoints/
 models/weights/
+
+# Model weights: fetched with scripts/fetch_models.py, never committed.
+models/weights/

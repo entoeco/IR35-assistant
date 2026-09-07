@@ -14,3 +14,11 @@ matplotlib==3.10.9
 # Read only. Used once, in Phase 0, to extract the schema from the ESQ
 # template. Not needed to regenerate the corpus or run the baselines.
 openpyxl==3.1.5
+
+# Phase 3 local backends. Only needed to run the NLI or local-LLM arms;
+# the mock and hosted backends need neither.
+# NOTE: the torch pin below is the CUDA build resolved in the build sandbox.
+# On a laptop install the CPU wheel instead — several GB smaller, same code:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch==2.14.0+cu130
+transformers==5.16.1

@@ -1,0 +1,200 @@
+# =============================================================================
+# MODEL BACKEND  —  constraint 2
+# =============================================================================
+# All inference goes through one interface with a config-selected implementation.
+# Switching between a locally-runnable model and a hosted API is an edit to
+# `backend` below and nothing else. tests/test_backend.py asserts that every
+# implementation satisfies the same protocol and that swapping is a config
+# change, not a code change.
+#
+# PRODUCTION IS ASSUMED LOCAL-ONLY.
+#   ESQ submissions contain named individuals, day rates and tax-sensitive
+#   information. Sending them to a hosted API means personal data leaving
+#   University control, which is an Information Governance decision and a
+#   third-country transfer question — not an engineering default. The hosted
+#   path exists for development convenience and for the Phase 3 method
+#   comparison. `require_local` below is the guard: set it true and the process
+#   refuses to start with a hosted backend selected.
+# =============================================================================
+
+model_config_version: "0.1.0"
+
+# One of: mock | local_transformers | local_llm | hosted_api
+backend: local_transformers
+
+# Fail closed. When true, selecting a non-local backend raises at construction
+# rather than at first inference — so a misconfiguration is caught on startup,
+# not halfway through a batch of real submissions.
+require_local: false
+
+# -----------------------------------------------------------------------------
+# BACKENDS
+# -----------------------------------------------------------------------------
+backends:
+
+  mock:
+    kind: mock
+    description: >-
+      Deterministic stub. Returns fixed NLI distributions and canned generations
+      keyed by a hash of the input, so every downstream component can be tested
+      without model weights and without network access. Used by the test suite
+      and by any CI run.
+    seed: 20260907
+
+  local_transformers:
+    kind: local_transformers
+    description: >-
+      Cross-encoder natural language inference, run locally with transformers.
+    # MODEL CHOICE, AND WHAT WAS REJECTED
+    #
+    # DeBERTa-v3-base fine-tuned on MNLI + FEVER + ANLI. Chosen for three
+    # reasons:
+    #
+    # 1. CROSS-ENCODER, NOT BI-ENCODER. The task is entirely about the
+    #    relationship between two short texts, and a cross-encoder attends
+    #    across the pair. A bi-encoder (embed each side, compare with cosine)
+    #    was rejected: a contradiction and an entailment are both *topically*
+    #    similar, so cosine distance is close to uninformative here. "We have no
+    #    right to refuse a replacement" and "nobody else can do this work" are
+    #    about the same subject and mean opposite things.
+    #
+    # 2. TRAINED ON ADVERSARIAL NLI. ANLI examples are specifically ones that
+    #    fooled earlier models, which is the closest available proxy for the
+    #    subtlety-3 cases — where the contradiction turns on a qualification
+    #    rather than a negation.
+    #
+    # 3. RUNS ON A LAPTOP. ~184M parameters, CPU inference in the low hundreds
+    #    of milliseconds per pair. The deployment assumption is local-only, so a
+    #    model that needs a GPU is a different proposition for the University.
+    #
+    # Rejected: fine-tuning on the synthetic corpus. Seventy positives is
+    # nowhere near enough, and it would also re-import the template-memorisation
+    # problem Phase 2 exposed. Zero-shot transfer is the honest use of a
+    # pretrained NLI model here.
+    model_id: MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli
+    revision: main
+    local_files_only: true      # never reach for the network at inference time
+    cache_dir: models/weights
+    device: cpu
+    max_length: 512
+    batch_size: 16
+    # Label order varies between checkpoints. Read from the model's own config
+    # at load time; this is the fallback if the checkpoint does not declare it.
+    label_order: [entailment, neutral, contradiction]
+
+  local_llm:
+    kind: local_llm
+    description: >-
+      Instruction-tuned causal model run locally, for the few-shot comparison
+      on the local-only deployment path.
+    model_id: Qwen/Qwen2.5-1.5B-Instruct
+    revision: main
+    local_files_only: true
+    cache_dir: models/weights
+    device: cpu
+    max_new_tokens: 200
+    temperature: 0.0
+
+  hosted_api:
+    kind: hosted_api
+    description: >-
+      Hosted Messages API. Development and comparison only — see the header.
+    base_url_env: ANTHROPIC_BASE_URL
+    api_key_env: ANTHROPIC_API_KEY
+    model: claude-sonnet-4-5
+    max_tokens: 400
+    temperature: 0.0
+    timeout_seconds: 60
+    max_retries: 3
+    # Never send raw submissions to a hosted endpoint unless de-identification
+    # has run. Checked at call time, not assumed.
+    require_deidentified: true
+
+# -----------------------------------------------------------------------------
+# NLI DETECTOR
+# -----------------------------------------------------------------------------
+nli:
+  # The premise states what the manager asserted by ticking the box; the
+  # hypothesis is what they then wrote. Premise wording measurably affects
+  # zero-shot NLI performance, so it lives here as an experiment parameter
+  # rather than in code.
+  premise_template: "In answer to '{label}', the engaging manager stated: {value}"
+  hypothesis_template: "{text}"
+
+  # NLI is not symmetric: P(contradiction | premise, hypothesis) differs from
+  # P(contradiction | hypothesis, premise). Scoring both directions and taking
+  # the maximum is a recall-oriented choice, consistent with the operating point
+  # rationale — a contradiction visible from either direction is worth showing a
+  # reviewer.
+  bidirectional: true
+  aggregate: max            # max | mean | forward_only
+
+  # HOW A 3-CLASS DISTRIBUTION BECOMES ONE SCORE.
+  #   contradiction_only : P(contradiction)
+  #   normalised         : P(contradiction) / (P(contradiction) + P(entailment))
+  #                        — discounts neutral, which is useful because most
+  #                        justifications are neither strict entailments nor
+  #                        strict contradictions of a dropdown value.
+  score_mode: normalised
+
+  # THE NON-SUPPORT SIGNAL.
+  # `hedged_non_support` is the contradiction type the rule baseline scored 0.20
+  # on, because there is no phrase to match: the manager selected a definite
+  # option and then wrote something that fails to support it. NLI's neutral
+  # class is exactly that shape — text that neither entails nor contradicts.
+  # So high neutral against a definite answer is itself evidence, and is mixed
+  # in at a low weight. Set to 0.0 to disable and measure the difference.
+  non_support_weight: 0.25
+  non_support_floor: 0.55    # only count neutral above this probability
+
+  # Justification boxes are short (median ~120 characters in the Phase 1
+  # corpus), but the duties narrative is not. Long text is split on sentence
+  # boundaries and the strongest chunk wins, rather than being truncated at the
+  # model's limit and losing the end of the argument.
+  chunk_long_text: true
+  chunk_target_chars: 900
+
+# -----------------------------------------------------------------------------
+# FEW-SHOT DETECTOR
+# -----------------------------------------------------------------------------
+fewshot:
+  # The task description given to the model. Deliberately framed as
+  # inconsistency detection, never as status determination — the model is not
+  # asked what the IR35 outcome is, and cannot answer that question even if
+  # prompted, because it is never shown the other answers.
+  system_prompt: >-
+    You are assisting a UK university's IR35 team by checking one answer on an
+    Employment Status Questionnaire for internal consistency. You are given a
+    question, the option the engaging manager selected, and the free-text
+    justification they wrote for that same question. Decide whether the
+    justification is consistent with the selected option, or whether it
+    undermines or contradicts it. You are NOT determining employment status,
+    and you must not comment on whether the engagement is inside or outside
+    IR35. Report only on whether these two statements agree.
+
+  # Examples are drawn from the contradiction descriptions in
+  # contradiction_pairs.yaml plus a fixed set of worked cases, so that changing
+  # the shots is a config edit. Shots are held constant across all pairs so the
+  # comparison is not confounded by per-pair prompt tuning.
+  n_shots: 4
+  include_pair_description: true
+
+  # Structured output contract. A free-text answer would need parsing that fails
+  # silently; a strict contract fails loudly and is retried.
+  response_format: |
+    Respond with JSON only, no other text:
+    {"verdict": "consistent" | "contradicts" | "unclear",
+     "confidence": <number between 0 and 1>,
+     "reason": "<one sentence a reviewer can check>"}
+
+  # Verdict -> contradiction probability. `unclear` maps low but non-zero: it is
+  # weak evidence of non-support, the same reasoning as the NLI neutral class.
+  verdict_scores:
+    contradicts: 1.0
+    unclear: 0.35
+    consistent: 0.0
+
+  max_parse_retries: 2
+  # On repeated parse failure, score 0 and record the failure rather than
+  # guessing. A silently imputed score is worse than a recorded miss.
+  on_parse_failure: zero_and_record
