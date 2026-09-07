@@ -251,6 +251,14 @@ def build_report(
 
     add("## Where each method fails")
     add("")
+    add("**These breakdowns are on the `record` split**, because it is the only split "
+        "with enough positives per cell to break down at all. That means the TF-IDF "
+        "column is the *memorising* regime: its per-type numbers describe how well it "
+        "recognises propositions it has already seen, and they do not transfer to unseen "
+        "phrasing. The rule columns are split-independent and can be read at face value. "
+        "Compare the rule variants against each other freely; compare them against TF-IDF "
+        "only with that asymmetry in mind.")
+    add("")
     types = sorted({k for r in results.values() for k in r.by_type})
     add("### Recall by contradiction type (`record` split, at the chosen operating point)")
     add("")
@@ -278,6 +286,11 @@ def build_report(
         add("These two types are the specific place a transformer should earn its keep. "
             "If Phase 3 does not improve on them, the method comparison has a real finding "
             "to report rather than a foregone conclusion.")
+        add("")
+        add("`rules_vocab_stripped` scoring near zero on every type is the tautology "
+            "warned about above, visible in full: remove every term that occurs in the "
+            "data and a lexical method has nothing left to match. It is in the table so "
+            "the floor is not mistaken for a result.")
         add("")
 
     subtleties = sorted({k for r in results.values() for k in r.by_subtlety})
@@ -310,6 +323,20 @@ def build_report(
         "here are small — single figures per archetype — so differences should be read as "
         "a direction to investigate, not as an effect.")
     add("")
+    rules_arch = results.get(("record", "rules_as_authored"))
+    if rules_arch and rules_arch.by_archetype:
+        ranked = sorted(rules_arch.by_archetype.items(), key=lambda kv: kv[1]["recall"])
+        worst, best = ranked[0], ranked[-1]
+        add(f"The direction to investigate is already visible: the rule baseline catches "
+            f"{best[1]['recall']:.0%} of contradictions on {best[0].replace('_', ' ')} "
+            f"engagements and {worst[1]['recall']:.0%} on "
+            f"{worst[0].replace('_', ' ')} ones. That is the shape predicted in Phase 1 — "
+            "the borderline cases cluster in teaching engagements, where autonomy of "
+            "method sits alongside a fixed timetable — and if it survives Phase 4 with "
+            "larger cells it is a fairness finding, not a tuning problem. A tool that "
+            "protects one category of worker better than another is a governance issue "
+            "before it is a metric.")
+        add("")
 
     registers = sorted({k for r in results.values() for k in r.by_register})
     add("### Recall by writing register (`record` split)")

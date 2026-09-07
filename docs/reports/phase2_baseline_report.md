@@ -94,6 +94,8 @@ The brief asks for it, so it is in the table. At this class balance it is mislea
 
 ## Where each method fails
 
+**These breakdowns are on the `record` split**, because it is the only split with enough positives per cell to break down at all. That means the TF-IDF column is the *memorising* regime: its per-type numbers describe how well it recognises propositions it has already seen, and they do not transfer to unseen phrasing. The rule columns are split-independent and can be read at face value. Compare the rule variants against each other freely; compare them against TF-IDF only with that asymmetry in mind.
+
 ### Recall by contradiction type (`record` split, at the chosen operating point)
 
 | Method | category mismatch | direct negation | hedged non support | named person dependency | reimbursement flip | scope qualification | temporal inconsistency |
@@ -106,6 +108,8 @@ The brief asks for it, so it is in the table. At this class balance it is mislea
 The rule baseline's weakest types are the predicted ones. `hedged_non_support` recall is **0.20** — a keyword list cannot detect the *absence* of commitment, because there is no phrase to match; the contradiction is that the manager selected a definite option and then wrote something that fails to support it. `named_person_dependency` is **0.40** despite being the highest-priority pair in the set, because the dependency is usually implied rather than stated in listed vocabulary.
 
 These two types are the specific place a transformer should earn its keep. If Phase 3 does not improve on them, the method comparison has a real finding to report rather than a foregone conclusion.
+
+`rules_vocab_stripped` scoring near zero on every type is the tautology warned about above, visible in full: remove every term that occurs in the data and a lexical method has nothing left to match. It is in the table so the floor is not mistaken for a result.
 
 ### Recall by subtlety (`record` split)
 
@@ -129,6 +133,8 @@ Level 1 is blatant, level 2 needs reading, level 3 needs domain knowledge — th
 
 A first look at the disparity question Phase 4 takes up properly. Cell counts here are small — single figures per archetype — so differences should be read as a direction to investigate, not as an effect.
 
+The direction to investigate is already visible: the rule baseline catches 74% of contradictions on it contractor engagements and 50% on visiting lecturer ones. That is the shape predicted in Phase 1 — the borderline cases cluster in teaching engagements, where autonomy of method sits alongside a fixed timetable — and if it survives Phase 4 with larger cells it is a fairness finding, not a tuning problem. A tool that protects one category of worker better than another is a governance issue before it is a metric.
+
 ### Recall by writing register (`record` split)
 
 | Method | hedged | terse | verbose |
@@ -147,7 +153,7 @@ Register here is confounded with archetype, because archetypes carry different r
 | `rules_as_authored` | 0.0s |
 | `rules_phrase_deleaked` | 0.0s |
 | `rules_vocab_stripped` | 0.0s |
-| `tfidf_logreg` | 17.7s |
+| `tfidf_logreg` | 17.9s |
 
 Recorded because the deployment assumption is local-only: a method that needs a GPU to be practical is a different proposition for the University than one that runs on a laptop.
 
