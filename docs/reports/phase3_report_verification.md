@@ -12,38 +12,38 @@ Backend: `mock` — n/a (local).
 
 | Method | PR-AUC | ROC-AUC | Macro-F1 | Brier | Threshold | Recall | Precision | Flags/form | Missed |
 |---|---|---|---|---|---|---|---|---|---|
-| `fewshot_llm` | 0.009 | 0.536 | 0.463 | 0.0350 | 0.262 | **0.23** | 0.010 | 4.66 | 54 |
-| `nli_cross_encoder` | 0.008 | 0.514 | 0.174 | 0.0887 | 0.117 | **0.80** | 0.007 | 22.65 | 14 |
-| `rules_as_authored` | 0.568 | 0.797 | 0.686 | 0.0050 | 0.354 | **0.60** | 0.276 | 0.43 | 28 |
-| `tfidf_logreg` | 0.733 | 0.951 | 0.612 | 0.0035 | 0.087 | **0.80** | 0.142 | 1.12 | 14 |
+| `fewshot_llm` | 0.008 | 0.508 | 0.461 | 0.0352 | 0.262 | **0.17** | 0.007 | 4.64 | 58 |
+| `nli_cross_encoder` | 0.007 | 0.477 | 0.141 | 0.0887 | 0.115 | **0.80** | 0.007 | 23.93 | 14 |
+| `rules_as_authored` | 0.571 | 0.797 | 0.690 | 0.0048 | 0.354 | **0.60** | 0.286 | 0.42 | 28 |
+| `tfidf_logreg` | 0.732 | 0.942 | 0.592 | 0.0039 | 0.090 | **0.80** | 0.118 | 1.35 | 14 |
 
-- `fewshot_llm`: Recall target 80% is unreachable at any threshold; the best achievable is 23%. Reported at that point.
+- `fewshot_llm`: Recall target 80% is unreachable at any threshold; the best achievable is 17%. Reported at that point.
 - `rules_as_authored`: Recall target 80% is unreachable at any threshold; the best achievable is 60%. Reported at that point.
 
 ### `unit` split
 
 | Method | PR-AUC | ROC-AUC | Macro-F1 | Brier | Threshold | Recall | Precision | Flags/form | Missed |
 |---|---|---|---|---|---|---|---|---|---|
-| `fewshot_llm` | 0.009 | 0.536 | 0.463 | 0.0350 | 0.262 | **0.23** | 0.010 | 4.66 | 54 |
-| `nli_cross_encoder` | 0.008 | 0.514 | 0.174 | 0.0887 | 0.117 | **0.80** | 0.007 | 22.65 | 14 |
-| `rules_as_authored` | 0.568 | 0.797 | 0.686 | 0.0050 | 0.354 | **0.60** | 0.276 | 0.43 | 28 |
-| `tfidf_logreg` | 0.023 | 0.636 | 0.357 | 0.1440 | 0.063 | **0.80** | 0.012 | 13.46 | 14 |
+| `fewshot_llm` | 0.008 | 0.508 | 0.461 | 0.0352 | 0.262 | **0.17** | 0.007 | 4.64 | 58 |
+| `nli_cross_encoder` | 0.007 | 0.477 | 0.141 | 0.0887 | 0.115 | **0.80** | 0.007 | 23.93 | 14 |
+| `rules_as_authored` | 0.571 | 0.797 | 0.690 | 0.0048 | 0.354 | **0.60** | 0.286 | 0.42 | 28 |
+| `tfidf_logreg` | 0.010 | 0.620 | 0.346 | 0.1379 | 0.050 | **0.80** | 0.011 | 14.11 | 14 |
 
-- `fewshot_llm`: Recall target 80% is unreachable at any threshold; the best achievable is 23%. Reported at that point.
+- `fewshot_llm`: Recall target 80% is unreachable at any threshold; the best achievable is 17%. Reported at that point.
 - `rules_as_authored`: Recall target 80% is unreachable at any threshold; the best achievable is 60%. Reported at that point.
 
 ### Phase 2 baselines, for comparison
 
 | Method | Split | PR-AUC | Recall | Flags/form |
 |---|---|---|---|---|
-| `rules_as_authored` | `record` | 0.568 | 0.60 | 0.43 |
-| `rules_phrase_deleaked` | `record` | 0.425 | 0.53 | 0.42 |
+| `rules_as_authored` | `record` | 0.571 | 0.60 | 0.42 |
+| `rules_phrase_deleaked` | `record` | 0.434 | 0.53 | 0.41 |
 | `rules_vocab_stripped` | `record` | 0.035 | 0.03 | 0.01 |
-| `tfidf_logreg` | `record` | 0.718 | 0.80 | 0.71 |
-| `rules_as_authored` | `unit` | 0.568 | 0.60 | 0.43 |
-| `rules_phrase_deleaked` | `unit` | 0.425 | 0.53 | 0.42 |
+| `tfidf_logreg` | `record` | 0.699 | 0.80 | 1.52 |
+| `rules_as_authored` | `unit` | 0.571 | 0.60 | 0.42 |
+| `rules_phrase_deleaked` | `unit` | 0.434 | 0.53 | 0.41 |
 | `rules_vocab_stripped` | `unit` | 0.035 | 0.03 | 0.01 |
-| `tfidf_logreg` | `unit` | 0.009 | 0.80 | 16.18 |
+| `tfidf_logreg` | `unit` | 0.009 | 0.80 | 16.90 |
 
 The comparison that matters is the `unit` split: TF-IDF collapsed there because it had memorised the templates, while the rule baseline was unaffected because it does not learn. Both methods added in this phase are also split-independent — zero-shot NLI and few-shot prompting fit nothing — so any gap between them and the rule baseline on the `unit` split is a real difference in ability to generalise, not a difference in what was memorised.
 
@@ -51,8 +51,8 @@ The comparison that matters is the `unit` split: TF-IDF collapsed there because 
 
 | Method | category mismatch | direct negation | hedged non support | named person dependency | reimbursement flip | scope qualification | temporal inconsistency |
 |---|---|---|---|---|---|---|---|
-| `fewshot_llm` | 0.00 (0/9) | 0.10 (1/10) | 0.30 (3/10) | 0.60 (6/10) | 0.30 (3/10) | 0.09 (1/11) | 0.20 (2/10) |
-| `nli_cross_encoder` | 0.78 (7/9) | 0.50 (5/10) | 0.60 (6/10) | 0.90 (9/10) | 0.90 (9/10) | 1.00 (11/11) | 0.90 (9/10) |
+| `fewshot_llm` | 0.00 (0/9) | 0.20 (2/10) | 0.20 (2/10) | 0.40 (4/10) | 0.20 (2/10) | 0.09 (1/11) | 0.10 (1/10) |
+| `nli_cross_encoder` | 0.67 (6/9) | 0.90 (9/10) | 0.70 (7/10) | 0.90 (9/10) | 0.90 (9/10) | 0.73 (8/11) | 0.80 (8/10) |
 | `rules_as_authored` | 0.89 (8/9) | 0.80 (8/10) | 0.20 (2/10) | 0.40 (4/10) | 0.60 (6/10) | 0.73 (8/11) | 0.60 (6/10) |
 | `tfidf_logreg` | 0.78 (7/9) | 0.80 (8/10) | 0.90 (9/10) | 0.80 (8/10) | 0.90 (9/10) | 0.55 (6/11) | 0.90 (9/10) |
 
@@ -62,10 +62,10 @@ The two types to watch are `hedged_non_support` and `named_person_dependency`, w
 
 | Method | level 1 | level 2 | level 3 |
 |---|---|---|---|
-| `fewshot_llm` | 0.26 (6/23) | 0.26 (9/34) | 0.08 (1/13) |
-| `nli_cross_encoder` | 0.74 (17/23) | 0.85 (29/34) | 0.77 (10/13) |
+| `fewshot_llm` | 0.30 (7/23) | 0.12 (4/34) | 0.08 (1/13) |
+| `nli_cross_encoder` | 0.96 (22/23) | 0.74 (25/34) | 0.69 (9/13) |
 | `rules_as_authored` | 0.65 (15/23) | 0.65 (22/34) | 0.38 (5/13) |
-| `tfidf_logreg` | 0.74 (17/23) | 0.85 (29/34) | 0.77 (10/13) |
+| `tfidf_logreg` | 0.74 (17/23) | 0.82 (28/34) | 0.85 (11/13) |
 
 ## Runtime
 
@@ -74,7 +74,7 @@ The two types to watch are `hedged_non_support` and `named_person_dependency`, w
 | `nli_cross_encoder` | 0.0s |
 | `fewshot_llm` | 0.0s |
 | `rules_as_authored` | 0.0s |
-| `tfidf_logreg` | 9.0s |
+| `tfidf_logreg` | 12.6s |
 
 Recorded because the deployment assumption is local-only. A method that needs a GPU, or that costs a hosted API call per field per submission, is a different proposition for the University than one that runs on a laptop — and that is a procurement and Information Governance question as much as an accuracy one.
 

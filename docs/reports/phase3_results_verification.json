@@ -13,7 +13,7 @@
     "positive_rate": 0.00706,
     "instances_per_record": 28.3,
     "n_blank_or_non_responsive": 16,
-    "n_unusable_text": 11,
+    "n_unusable_text": 10,
     "by_contradiction_type": {
       "category_mismatch": 9,
       "direct_negation": 10,
@@ -38,35 +38,35 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.0081,
-      "roc_auc": 0.5139,
-      "macro_f1": 0.1739,
-      "brier": 0.0887,
+      "pr_auc": 0.0073,
+      "roc_auc": 0.4767,
+      "macro_f1": 0.1409,
+      "brier": 0.08867,
       "chosen": {
-        "threshold": 0.1172,
-        "precision": 0.0071,
+        "threshold": 0.1152,
+        "precision": 0.0067,
         "recall": 0.8,
-        "f1": 0.014,
-        "n_flags": 7929,
-        "flags_per_record": 22.65,
+        "f1": 0.0133,
+        "n_flags": 8374,
+        "flags_per_record": 23.93,
         "true_positives": 56,
         "missed": 14
       },
       "by_type": {
         "category_mismatch": {
           "n": 9,
-          "caught": 7,
-          "recall": 0.7778
+          "caught": 6,
+          "recall": 0.6667
         },
         "direct_negation": {
           "n": 10,
-          "caught": 5,
-          "recall": 0.5
+          "caught": 9,
+          "recall": 0.9
         },
         "hedged_non_support": {
           "n": 10,
-          "caught": 6,
-          "recall": 0.6
+          "caught": 7,
+          "recall": 0.7
         },
         "named_person_dependency": {
           "n": 10,
@@ -80,42 +80,42 @@
         },
         "scope_qualification": {
           "n": 11,
-          "caught": 11,
-          "recall": 1.0
+          "caught": 8,
+          "recall": 0.7273
         },
         "temporal_inconsistency": {
           "n": 10,
-          "caught": 9,
-          "recall": 0.9
+          "caught": 8,
+          "recall": 0.8
         }
       },
       "by_subtlety": {
         "1": {
           "n": 23,
-          "caught": 17,
-          "recall": 0.7391
+          "caught": 22,
+          "recall": 0.9565
         },
         "2": {
           "n": 34,
-          "caught": 29,
-          "recall": 0.8529
+          "caught": 25,
+          "recall": 0.7353
         },
         "3": {
           "n": 13,
-          "caught": 10,
-          "recall": 0.7692
+          "caught": 9,
+          "recall": 0.6923
         }
       },
       "by_archetype": {
         "it_contractor": {
           "n": 23,
-          "caught": 17,
-          "recall": 0.7391
+          "caught": 19,
+          "recall": 0.8261
         },
         "research_consultant": {
           "n": 18,
-          "caught": 13,
-          "recall": 0.7222
+          "caught": 14,
+          "recall": 0.7778
         },
         "technical_trades": {
           "n": 13,
@@ -124,25 +124,25 @@
         },
         "visiting_lecturer": {
           "n": 16,
-          "caught": 16,
-          "recall": 1.0
+          "caught": 13,
+          "recall": 0.8125
         }
       },
       "by_register": {
         "hedged": {
           "n": 24,
-          "caught": 22,
-          "recall": 0.9167
+          "caught": 19,
+          "recall": 0.7917
         },
         "terse": {
           "n": 27,
-          "caught": 18,
-          "recall": 0.6667
+          "caught": 20,
+          "recall": 0.7407
         },
         "verbose": {
           "n": 19,
-          "caught": 16,
-          "recall": 0.8421
+          "caught": 17,
+          "recall": 0.8947
         }
       },
       "notes": []
@@ -153,19 +153,19 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.0086,
-      "roc_auc": 0.5356,
-      "macro_f1": 0.4634,
-      "brier": 0.03502,
+      "pr_auc": 0.0082,
+      "roc_auc": 0.5078,
+      "macro_f1": 0.4611,
+      "brier": 0.03518,
       "chosen": {
         "threshold": 0.2625,
-        "precision": 0.0098,
-        "recall": 0.2286,
-        "f1": 0.0188,
-        "n_flags": 1632,
-        "flags_per_record": 4.66,
-        "true_positives": 16,
-        "missed": 54
+        "precision": 0.0074,
+        "recall": 0.1714,
+        "f1": 0.0142,
+        "n_flags": 1624,
+        "flags_per_record": 4.64,
+        "true_positives": 12,
+        "missed": 58
       },
       "by_type": {
         "category_mismatch": {
@@ -175,23 +175,23 @@
         },
         "direct_negation": {
           "n": 10,
-          "caught": 1,
-          "recall": 0.1
+          "caught": 2,
+          "recall": 0.2
         },
         "hedged_non_support": {
           "n": 10,
-          "caught": 3,
-          "recall": 0.3
+          "caught": 2,
+          "recall": 0.2
         },
         "named_person_dependency": {
           "n": 10,
-          "caught": 6,
-          "recall": 0.6
+          "caught": 4,
+          "recall": 0.4
         },
         "reimbursement_flip": {
           "n": 10,
-          "caught": 3,
-          "recall": 0.3
+          "caught": 2,
+          "recall": 0.2
         },
         "scope_qualification": {
           "n": 11,
@@ -200,20 +200,20 @@
         },
         "temporal_inconsistency": {
           "n": 10,
-          "caught": 2,
-          "recall": 0.2
+          "caught": 1,
+          "recall": 0.1
         }
       },
       "by_subtlety": {
         "1": {
           "n": 23,
-          "caught": 6,
-          "recall": 0.2609
+          "caught": 7,
+          "recall": 0.3043
         },
         "2": {
           "n": 34,
-          "caught": 9,
-          "recall": 0.2647
+          "caught": 4,
+          "recall": 0.1176
         },
         "3": {
           "n": 13,
@@ -224,30 +224,30 @@
       "by_archetype": {
         "it_contractor": {
           "n": 23,
-          "caught": 6,
-          "recall": 0.2609
+          "caught": 4,
+          "recall": 0.1739
         },
         "research_consultant": {
           "n": 18,
-          "caught": 3,
-          "recall": 0.1667
+          "caught": 2,
+          "recall": 0.1111
         },
         "technical_trades": {
           "n": 13,
-          "caught": 1,
-          "recall": 0.0769
+          "caught": 2,
+          "recall": 0.1538
         },
         "visiting_lecturer": {
           "n": 16,
-          "caught": 6,
-          "recall": 0.375
+          "caught": 4,
+          "recall": 0.25
         }
       },
       "by_register": {
         "hedged": {
           "n": 24,
-          "caught": 12,
-          "recall": 0.5
+          "caught": 8,
+          "recall": 0.3333
         },
         "terse": {
           "n": 27,
@@ -261,7 +261,7 @@
         }
       },
       "notes": [
-        "Recall target 80% is unreachable at any threshold; the best achievable is 23%. Reported at that point."
+        "Recall target 80% is unreachable at any threshold; the best achievable is 17%. Reported at that point."
       ]
     },
     {
@@ -270,17 +270,17 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.5679,
-      "roc_auc": 0.7973,
-      "macro_f1": 0.6857,
-      "brier": 0.00496,
+      "pr_auc": 0.5711,
+      "roc_auc": 0.7974,
+      "macro_f1": 0.6902,
+      "brier": 0.00485,
       "chosen": {
         "threshold": 0.3543,
-        "precision": 0.2763,
+        "precision": 0.2857,
         "recall": 0.6,
-        "f1": 0.3784,
-        "n_flags": 152,
-        "flags_per_record": 0.43,
+        "f1": 0.3871,
+        "n_flags": 147,
+        "flags_per_record": 0.42,
         "true_positives": 42,
         "missed": 28
       },
@@ -387,17 +387,17 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.7331,
-      "roc_auc": 0.9513,
-      "macro_f1": 0.6119,
-      "brier": 0.00349,
+      "pr_auc": 0.7322,
+      "roc_auc": 0.9424,
+      "macro_f1": 0.592,
+      "brier": 0.00387,
       "chosen": {
-        "threshold": 0.087,
-        "precision": 0.1425,
+        "threshold": 0.0896,
+        "precision": 0.1184,
         "recall": 0.8,
-        "f1": 0.2419,
-        "n_flags": 393,
-        "flags_per_record": 1.12,
+        "f1": 0.2063,
+        "n_flags": 473,
+        "flags_per_record": 1.35,
         "true_positives": 56,
         "missed": 14
       },
@@ -446,25 +446,25 @@
         },
         "2": {
           "n": 34,
-          "caught": 29,
-          "recall": 0.8529
+          "caught": 28,
+          "recall": 0.8235
         },
         "3": {
           "n": 13,
-          "caught": 10,
-          "recall": 0.7692
+          "caught": 11,
+          "recall": 0.8462
         }
       },
       "by_archetype": {
         "it_contractor": {
           "n": 23,
-          "caught": 17,
-          "recall": 0.7391
+          "caught": 18,
+          "recall": 0.7826
         },
         "research_consultant": {
           "n": 18,
-          "caught": 16,
-          "recall": 0.8889
+          "caught": 15,
+          "recall": 0.8333
         },
         "technical_trades": {
           "n": 13,
@@ -502,35 +502,35 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.0081,
-      "roc_auc": 0.5139,
-      "macro_f1": 0.1739,
-      "brier": 0.0887,
+      "pr_auc": 0.0073,
+      "roc_auc": 0.4767,
+      "macro_f1": 0.1409,
+      "brier": 0.08867,
       "chosen": {
-        "threshold": 0.1172,
-        "precision": 0.0071,
+        "threshold": 0.1152,
+        "precision": 0.0067,
         "recall": 0.8,
-        "f1": 0.014,
-        "n_flags": 7929,
-        "flags_per_record": 22.65,
+        "f1": 0.0133,
+        "n_flags": 8374,
+        "flags_per_record": 23.93,
         "true_positives": 56,
         "missed": 14
       },
       "by_type": {
         "category_mismatch": {
           "n": 9,
-          "caught": 7,
-          "recall": 0.7778
+          "caught": 6,
+          "recall": 0.6667
         },
         "direct_negation": {
           "n": 10,
-          "caught": 5,
-          "recall": 0.5
+          "caught": 9,
+          "recall": 0.9
         },
         "hedged_non_support": {
           "n": 10,
-          "caught": 6,
-          "recall": 0.6
+          "caught": 7,
+          "recall": 0.7
         },
         "named_person_dependency": {
           "n": 10,
@@ -544,42 +544,42 @@
         },
         "scope_qualification": {
           "n": 11,
-          "caught": 11,
-          "recall": 1.0
+          "caught": 8,
+          "recall": 0.7273
         },
         "temporal_inconsistency": {
           "n": 10,
-          "caught": 9,
-          "recall": 0.9
+          "caught": 8,
+          "recall": 0.8
         }
       },
       "by_subtlety": {
         "1": {
           "n": 23,
-          "caught": 17,
-          "recall": 0.7391
+          "caught": 22,
+          "recall": 0.9565
         },
         "2": {
           "n": 34,
-          "caught": 29,
-          "recall": 0.8529
+          "caught": 25,
+          "recall": 0.7353
         },
         "3": {
           "n": 13,
-          "caught": 10,
-          "recall": 0.7692
+          "caught": 9,
+          "recall": 0.6923
         }
       },
       "by_archetype": {
         "it_contractor": {
           "n": 23,
-          "caught": 17,
-          "recall": 0.7391
+          "caught": 19,
+          "recall": 0.8261
         },
         "research_consultant": {
           "n": 18,
-          "caught": 13,
-          "recall": 0.7222
+          "caught": 14,
+          "recall": 0.7778
         },
         "technical_trades": {
           "n": 13,
@@ -588,25 +588,25 @@
         },
         "visiting_lecturer": {
           "n": 16,
-          "caught": 16,
-          "recall": 1.0
+          "caught": 13,
+          "recall": 0.8125
         }
       },
       "by_register": {
         "hedged": {
           "n": 24,
-          "caught": 22,
-          "recall": 0.9167
+          "caught": 19,
+          "recall": 0.7917
         },
         "terse": {
           "n": 27,
-          "caught": 18,
-          "recall": 0.6667
+          "caught": 20,
+          "recall": 0.7407
         },
         "verbose": {
           "n": 19,
-          "caught": 16,
-          "recall": 0.8421
+          "caught": 17,
+          "recall": 0.8947
         }
       },
       "notes": []
@@ -617,19 +617,19 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.0086,
-      "roc_auc": 0.5356,
-      "macro_f1": 0.4634,
-      "brier": 0.03502,
+      "pr_auc": 0.0082,
+      "roc_auc": 0.5078,
+      "macro_f1": 0.4611,
+      "brier": 0.03518,
       "chosen": {
         "threshold": 0.2625,
-        "precision": 0.0098,
-        "recall": 0.2286,
-        "f1": 0.0188,
-        "n_flags": 1632,
-        "flags_per_record": 4.66,
-        "true_positives": 16,
-        "missed": 54
+        "precision": 0.0074,
+        "recall": 0.1714,
+        "f1": 0.0142,
+        "n_flags": 1624,
+        "flags_per_record": 4.64,
+        "true_positives": 12,
+        "missed": 58
       },
       "by_type": {
         "category_mismatch": {
@@ -639,23 +639,23 @@
         },
         "direct_negation": {
           "n": 10,
-          "caught": 1,
-          "recall": 0.1
+          "caught": 2,
+          "recall": 0.2
         },
         "hedged_non_support": {
           "n": 10,
-          "caught": 3,
-          "recall": 0.3
+          "caught": 2,
+          "recall": 0.2
         },
         "named_person_dependency": {
           "n": 10,
-          "caught": 6,
-          "recall": 0.6
+          "caught": 4,
+          "recall": 0.4
         },
         "reimbursement_flip": {
           "n": 10,
-          "caught": 3,
-          "recall": 0.3
+          "caught": 2,
+          "recall": 0.2
         },
         "scope_qualification": {
           "n": 11,
@@ -664,20 +664,20 @@
         },
         "temporal_inconsistency": {
           "n": 10,
-          "caught": 2,
-          "recall": 0.2
+          "caught": 1,
+          "recall": 0.1
         }
       },
       "by_subtlety": {
         "1": {
           "n": 23,
-          "caught": 6,
-          "recall": 0.2609
+          "caught": 7,
+          "recall": 0.3043
         },
         "2": {
           "n": 34,
-          "caught": 9,
-          "recall": 0.2647
+          "caught": 4,
+          "recall": 0.1176
         },
         "3": {
           "n": 13,
@@ -688,30 +688,30 @@
       "by_archetype": {
         "it_contractor": {
           "n": 23,
-          "caught": 6,
-          "recall": 0.2609
+          "caught": 4,
+          "recall": 0.1739
         },
         "research_consultant": {
           "n": 18,
-          "caught": 3,
-          "recall": 0.1667
+          "caught": 2,
+          "recall": 0.1111
         },
         "technical_trades": {
           "n": 13,
-          "caught": 1,
-          "recall": 0.0769
+          "caught": 2,
+          "recall": 0.1538
         },
         "visiting_lecturer": {
           "n": 16,
-          "caught": 6,
-          "recall": 0.375
+          "caught": 4,
+          "recall": 0.25
         }
       },
       "by_register": {
         "hedged": {
           "n": 24,
-          "caught": 12,
-          "recall": 0.5
+          "caught": 8,
+          "recall": 0.3333
         },
         "terse": {
           "n": 27,
@@ -725,7 +725,7 @@
         }
       },
       "notes": [
-        "Recall target 80% is unreachable at any threshold; the best achievable is 23%. Reported at that point."
+        "Recall target 80% is unreachable at any threshold; the best achievable is 17%. Reported at that point."
       ]
     },
     {
@@ -734,17 +734,17 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.5679,
-      "roc_auc": 0.7973,
-      "macro_f1": 0.6857,
-      "brier": 0.00496,
+      "pr_auc": 0.5711,
+      "roc_auc": 0.7974,
+      "macro_f1": 0.6902,
+      "brier": 0.00485,
       "chosen": {
         "threshold": 0.3543,
-        "precision": 0.2763,
+        "precision": 0.2857,
         "recall": 0.6,
-        "f1": 0.3784,
-        "n_flags": 152,
-        "flags_per_record": 0.43,
+        "f1": 0.3871,
+        "n_flags": 147,
+        "flags_per_record": 0.42,
         "true_positives": 42,
         "missed": 28
       },
@@ -851,35 +851,35 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.0235,
-      "roc_auc": 0.6362,
-      "macro_f1": 0.3567,
-      "brier": 0.14395,
+      "pr_auc": 0.0097,
+      "roc_auc": 0.6195,
+      "macro_f1": 0.3461,
+      "brier": 0.13788,
       "chosen": {
-        "threshold": 0.0628,
-        "precision": 0.0119,
+        "threshold": 0.0503,
+        "precision": 0.0113,
         "recall": 0.8,
-        "f1": 0.0234,
-        "n_flags": 4710,
-        "flags_per_record": 13.46,
+        "f1": 0.0224,
+        "n_flags": 4938,
+        "flags_per_record": 14.11,
         "true_positives": 56,
         "missed": 14
       },
       "by_type": {
         "category_mismatch": {
           "n": 9,
-          "caught": 7,
-          "recall": 0.7778
+          "caught": 6,
+          "recall": 0.6667
         },
         "direct_negation": {
           "n": 10,
-          "caught": 9,
-          "recall": 0.9
+          "caught": 10,
+          "recall": 1.0
         },
         "hedged_non_support": {
           "n": 10,
-          "caught": 7,
-          "recall": 0.7
+          "caught": 8,
+          "recall": 0.8
         },
         "named_person_dependency": {
           "n": 10,
@@ -888,8 +888,8 @@
         },
         "reimbursement_flip": {
           "n": 10,
-          "caught": 10,
-          "recall": 1.0
+          "caught": 9,
+          "recall": 0.9
         },
         "scope_qualification": {
           "n": 11,
@@ -910,30 +910,30 @@
         },
         "2": {
           "n": 34,
-          "caught": 23,
-          "recall": 0.6765
+          "caught": 24,
+          "recall": 0.7059
         },
         "3": {
           "n": 13,
-          "caught": 12,
-          "recall": 0.9231
+          "caught": 11,
+          "recall": 0.8462
         }
       },
       "by_archetype": {
         "it_contractor": {
           "n": 23,
-          "caught": 21,
-          "recall": 0.913
+          "caught": 23,
+          "recall": 1.0
         },
         "research_consultant": {
           "n": 18,
-          "caught": 15,
-          "recall": 0.8333
+          "caught": 14,
+          "recall": 0.7778
         },
         "technical_trades": {
           "n": 13,
-          "caught": 12,
-          "recall": 0.9231
+          "caught": 11,
+          "recall": 0.8462
         },
         "visiting_lecturer": {
           "n": 16,
@@ -949,13 +949,13 @@
         },
         "terse": {
           "n": 27,
-          "caught": 25,
-          "recall": 0.9259
+          "caught": 26,
+          "recall": 0.963
         },
         "verbose": {
           "n": 19,
-          "caught": 14,
-          "recall": 0.7368
+          "caught": 13,
+          "recall": 0.6842
         }
       },
       "notes": []

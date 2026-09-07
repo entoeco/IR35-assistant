@@ -128,7 +128,17 @@ def build_report(
     add(f"- **Records:** {n}")
     add("- **Provenance:** generated from `config/generation.yaml`, "
         "`config/text_bank.yaml` and `config/ir35_weights.yaml`. "
-        "Regenerating from the same configs reproduces this corpus byte-for-byte.")
+        "Regenerating from the same configs reproduces this corpus byte-for-byte, "
+        "in any process.")
+    add("")
+    add("  That last clause was not true until Phase 4. `render` seeded its random "
+        "generator with `hash(register)`, and Python salts string hashing per process, "
+        "so a corpus regenerated in a new interpreter did not match. Every "
+        "determinism test passed throughout, because they all ran inside one "
+        "interpreter where the salt is fixed. It is now seeded with `zlib.crc32`, and "
+        "`tests/test_generator.py` asserts the property across two subprocesses with "
+        "different `PYTHONHASHSEED` values — the only shape of test that could have "
+        "caught it.")
     add("")
     add("All content is synthetic (constraint 1). Every name, address, company, "
         "rate and email is drawn from the invented pools in the generation config.")

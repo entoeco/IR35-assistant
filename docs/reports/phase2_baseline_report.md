@@ -6,9 +6,9 @@ Rule/keyword and TF-IDF baselines, evaluated with grouped cross-validation on tw
 
 ## The headline
 
-On a conventional record-disjoint split, TF-IDF + logistic regression looks strong: PR-AUC **0.718** against a no-skill floor of 0.007, reaching 80% recall at 0.71 flags per submission.
+On a conventional record-disjoint split, TF-IDF + logistic regression looks strong: PR-AUC **0.699** against a no-skill floor of 0.007, reaching 80% recall at 1.52 flags per submission.
 
-On the unit-disjoint split — where no test justification's underlying proposition appears in training — the same model collapses to PR-AUC **0.010**, which is essentially the no-skill floor. The rule baseline is unchanged across the two splits at PR-AUC **0.568**, because it does not learn from the corpus and so has nothing to memorise.
+On the unit-disjoint split — where no test justification's underlying proposition appears in training — the same model collapses to PR-AUC **0.009**, which is essentially the no-skill floor. The rule baseline is unchanged across the two splits at PR-AUC **0.571**, because it does not learn from the corpus and so has nothing to memorise.
 
 **Read that as: almost all of the TF-IDF baseline's apparent performance is template memorisation.** It is not detecting contradiction; it is recognising sentences it has seen. On phrasing it has not seen, it is no better than chance. That is the single most important result in this phase, and it reframes what Phase 3 has to demonstrate — not 'beat 0.72', but 'produce any signal at all on unseen phrasing'.
 
@@ -66,10 +66,10 @@ The three-word line is a judgement, stated so it can be disagreed with and recom
 
 | Method | PR-AUC | ROC-AUC | Macro-F1 | Brier | Threshold | Recall | Precision | Flags/form | Missed |
 |---|---|---|---|---|---|---|---|---|---|
-| `rules_as_authored` | 0.568 | 0.797 | 0.686 | 0.0050 | 0.354 | **0.60** | 0.276 | 0.43 | 28 |
-| `rules_phrase_deleaked` | 0.425 | 0.761 | 0.667 | 0.0057 | 0.354 | **0.53** | 0.252 | 0.42 | 33 |
+| `rules_as_authored` | 0.571 | 0.797 | 0.690 | 0.0048 | 0.354 | **0.60** | 0.286 | 0.42 | 28 |
+| `rules_phrase_deleaked` | 0.434 | 0.761 | 0.671 | 0.0056 | 0.354 | **0.53** | 0.261 | 0.41 | 33 |
 | `rules_vocab_stripped` | 0.035 | 0.514 | 0.526 | 0.0069 | 0.389 | **0.03** | 1.000 | 0.01 | 68 |
-| `tfidf_logreg` | 0.718 | 0.956 | 0.670 | 0.0035 | 0.102 | **0.80** | 0.224 | 0.71 | 14 |
+| `tfidf_logreg` | 0.699 | 0.949 | 0.580 | 0.0037 | 0.073 | **0.80** | 0.105 | 1.52 | 14 |
 
 - `rules_as_authored`: Recall target 80% is unreachable at any threshold; the best achievable is 60%. Reported at that point.
 - `rules_phrase_deleaked`: Recall target 80% is unreachable at any threshold; the best achievable is 53%. Reported at that point.
@@ -79,10 +79,10 @@ The three-word line is a judgement, stated so it can be disagreed with and recom
 
 | Method | PR-AUC | ROC-AUC | Macro-F1 | Brier | Threshold | Recall | Precision | Flags/form | Missed |
 |---|---|---|---|---|---|---|---|---|---|
-| `rules_as_authored` | 0.568 | 0.797 | 0.686 | 0.0050 | 0.354 | **0.60** | 0.276 | 0.43 | 28 |
-| `rules_phrase_deleaked` | 0.425 | 0.761 | 0.667 | 0.0057 | 0.354 | **0.53** | 0.252 | 0.42 | 33 |
+| `rules_as_authored` | 0.571 | 0.797 | 0.690 | 0.0048 | 0.354 | **0.60** | 0.286 | 0.42 | 28 |
+| `rules_phrase_deleaked` | 0.434 | 0.761 | 0.671 | 0.0056 | 0.354 | **0.53** | 0.261 | 0.41 | 33 |
 | `rules_vocab_stripped` | 0.035 | 0.514 | 0.526 | 0.0069 | 0.389 | **0.03** | 1.000 | 0.01 | 68 |
-| `tfidf_logreg` | 0.010 | 0.603 | 0.310 | 0.1165 | 0.027 | **0.80** | 0.010 | 16.18 | 14 |
+| `tfidf_logreg` | 0.009 | 0.598 | 0.297 | 0.1162 | 0.020 | **0.80** | 0.009 | 16.90 | 14 |
 
 - `rules_as_authored`: Recall target 80% is unreachable at any threshold; the best achievable is 60%. Reported at that point.
 - `rules_phrase_deleaked`: Recall target 80% is unreachable at any threshold; the best achievable is 53%. Reported at that point.
@@ -103,7 +103,7 @@ The brief asks for it, so it is in the table. At this class balance it is mislea
 | `rules_as_authored` | 0.89 (8/9) | 0.80 (8/10) | 0.20 (2/10) | 0.40 (4/10) | 0.60 (6/10) | 0.73 (8/11) | 0.60 (6/10) |
 | `rules_phrase_deleaked` | 0.89 (8/9) | 0.60 (6/10) | 0.00 (0/10) | 0.40 (4/10) | 0.60 (6/10) | 0.64 (7/11) | 0.60 (6/10) |
 | `rules_vocab_stripped` | 0.11 (1/9) | 0.00 (0/10) | 0.00 (0/10) | 0.00 (0/10) | 0.00 (0/10) | 0.00 (0/11) | 0.10 (1/10) |
-| `tfidf_logreg` | 0.78 (7/9) | 0.80 (8/10) | 0.70 (7/10) | 1.00 (10/10) | 0.70 (7/10) | 0.82 (9/11) | 0.80 (8/10) |
+| `tfidf_logreg` | 0.78 (7/9) | 0.80 (8/10) | 0.70 (7/10) | 1.00 (10/10) | 0.70 (7/10) | 0.73 (8/11) | 0.90 (9/10) |
 
 The rule baseline's weakest types are the predicted ones. `hedged_non_support` recall is **0.20** — a keyword list cannot detect the *absence* of commitment, because there is no phrase to match; the contradiction is that the manager selected a definite option and then wrote something that fails to support it. `named_person_dependency` is **0.40** despite being the highest-priority pair in the set, because the dependency is usually implied rather than stated in listed vocabulary.
 
@@ -118,7 +118,7 @@ These two types are the specific place a transformer should earn its keep. If Ph
 | `rules_as_authored` | 0.65 (15/23) | 0.65 (22/34) | 0.38 (5/13) |
 | `rules_phrase_deleaked` | 0.57 (13/23) | 0.56 (19/34) | 0.38 (5/13) |
 | `rules_vocab_stripped` | 0.00 (0/23) | 0.03 (1/34) | 0.08 (1/13) |
-| `tfidf_logreg` | 0.83 (19/23) | 0.79 (27/34) | 0.77 (10/13) |
+| `tfidf_logreg` | 0.83 (19/23) | 0.76 (26/34) | 0.85 (11/13) |
 
 Level 1 is blatant, level 2 needs reading, level 3 needs domain knowledge — the form's own cost exclusions, or the case law. The rule baseline degrades sharply at level 3, which is the expected shape: those are the contradictions a busy reviewer misses too, and they are the ones the tool most needs to catch.
 
@@ -129,7 +129,7 @@ Level 1 is blatant, level 2 needs reading, level 3 needs domain knowledge — th
 | `rules_as_authored` | 0.74 (17/23) | 0.56 (10/18) | 0.54 (7/13) | 0.50 (8/16) |
 | `rules_phrase_deleaked` | 0.65 (15/23) | 0.44 (8/18) | 0.54 (7/13) | 0.44 (7/16) |
 | `rules_vocab_stripped` | 0.09 (2/23) | 0.00 (0/18) | 0.00 (0/13) | 0.00 (0/16) |
-| `tfidf_logreg` | 0.74 (17/23) | 0.83 (15/18) | 0.77 (10/13) | 0.88 (14/16) |
+| `tfidf_logreg` | 0.83 (19/23) | 0.78 (14/18) | 0.69 (9/13) | 0.88 (14/16) |
 
 A first look at the disparity question Phase 4 takes up properly. Cell counts here are small — single figures per archetype — so differences should be read as a direction to investigate, not as an effect.
 
@@ -142,7 +142,7 @@ The direction to investigate is already visible: the rule baseline catches 74% o
 | `rules_as_authored` | 0.67 (16/24) | 0.59 (16/27) | 0.53 (10/19) |
 | `rules_phrase_deleaked` | 0.50 (12/24) | 0.56 (15/27) | 0.53 (10/19) |
 | `rules_vocab_stripped` | 0.00 (0/24) | 0.04 (1/27) | 0.05 (1/19) |
-| `tfidf_logreg` | 0.83 (20/24) | 0.78 (21/27) | 0.79 (15/19) |
+| `tfidf_logreg` | 0.79 (19/24) | 0.81 (22/27) | 0.79 (15/19) |
 
 Register here is confounded with archetype, because archetypes carry different register mixes. Phase 4's style-invariance test resolves that by re-rendering the *same* engagement in all three registers, which this breakdown cannot do.
 
@@ -153,7 +153,7 @@ Register here is confounded with archetype, because archetypes carry different r
 | `rules_as_authored` | 0.0s |
 | `rules_phrase_deleaked` | 0.0s |
 | `rules_vocab_stripped` | 0.0s |
-| `tfidf_logreg` | 17.9s |
+| `tfidf_logreg` | 26.6s |
 
 Recorded because the deployment assumption is local-only: a method that needs a GPU to be practical is a different proposition for the University than one that runs on a laptop.
 
@@ -182,10 +182,10 @@ Recorded because the deployment assumption is local-only: a method that needs a 
 
 | Target | Value |
 |---|---|
-| Rule baseline, PR-AUC (split-independent) | 0.568 |
+| Rule baseline, PR-AUC (split-independent) | 0.571 |
 | Rule baseline, recall ceiling | 0.60 |
-| Rule baseline de-leaked, PR-AUC | 0.425 |
-| TF-IDF on unseen phrasing, PR-AUC | 0.010 |
+| Rule baseline de-leaked, PR-AUC | 0.434 |
+| TF-IDF on unseen phrasing, PR-AUC | 0.009 |
 
 The bar that matters is the `unit` split: a method that generalises to phrasing it has not seen. A cross-encoder NLI model should, because it reasons over the relationship between two texts rather than over a learned vocabulary — but that is a hypothesis, and Phase 3 exists to test it, not to confirm it.
 

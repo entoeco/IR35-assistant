@@ -32,6 +32,7 @@ Constraint 1: every identity value is drawn from the invented pools in
 from __future__ import annotations
 
 import random
+import zlib
 from dataclasses import asdict, dataclass, field as dc_field
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -705,7 +706,13 @@ class EsqGenerator:
             (``record_id``, ``archetype``, ``register``).
         """
         chosen = register or state.register
-        rng = random.Random(state.seed + hash(chosen) % 10_000)
+        # zlib.crc32, NOT the builtin hash(). Python salts string hashing per
+        # process (PYTHONHASHSEED), so hash("verbose") differs between runs and
+        # the "regenerating from config reproduces the corpus byte-for-byte"
+        # claim held only within a single process. The in-process determinism
+        # test passed throughout and could never have caught it. crc32 is stable
+        # across processes, versions and platforms.
+        rng = random.Random(state.seed + zlib.crc32(chosen.encode("utf-8")) % 10_000)
         vocab = VocabContext(state.vocab)
 
         record: dict[str, Any] = {

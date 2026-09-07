@@ -17,6 +17,7 @@ from __future__ import annotations
 import ast
 import json
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -408,3 +409,48 @@ def test_no_module_hardcodes_an_esq_field_id() -> None:
             if field_id.match(literal):
                 offenders.append(f"{path.relative_to(REPO_ROOT)}: {literal!r}")
     assert not offenders, "hardcoded field ids: " + "; ".join(offenders)
+
+
+def test_rendering_is_deterministic_across_processes() -> None:
+    """The reproducibility claim is about separate runs, not one interpreter.
+
+    ``render`` originally seeded its generator with ``hash(register)``. Python
+    salts string hashing per process, so the corpus regenerated on Tuesday did
+    not match the corpus generated on Monday — while every in-process
+    determinism test passed, because within one interpreter the salt is fixed.
+
+    This test runs the render twice in separate interpreters with different
+    PYTHONHASHSEED values. It is the only shape of test that could have caught
+    it, and it is why the reproducibility claim in the Phase 1 report is now
+    true rather than merely tested.
+    """
+    import hashlib
+    import json as _json
+    import os
+    import subprocess
+
+    program = (
+        "import json,hashlib,logging;logging.disable(logging.CRITICAL);"
+        "from src.ingest.schema_loader import load_schema,load_generation_config,"
+        "load_yaml,CONFIG_DIR;"
+        "from src.models.cest_rules import CestRuleEngine;"
+        "from src.generate.generator import EsqGenerator;"
+        "s=load_schema();g=load_generation_config();"
+        "b=load_yaml(CONFIG_DIR/'text_bank.yaml');"
+        "gen=EsqGenerator(s,g,b,CestRuleEngine(s));"
+        "rows=[gen.render(gen.build_state(i)) for i in range(5)];"
+        "print(hashlib.sha256(json.dumps(rows,sort_keys=True).encode()).hexdigest())"
+    )
+    digests = []
+    for seed in ("0", "1"):
+        env = dict(os.environ, PYTHONHASHSEED=seed, PYTHONPATH=str(REPO_ROOT))
+        result = subprocess.run(
+            [sys.executable, "-c", program],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            env=env,
+            check=True,
+        )
+        digests.append(result.stdout.strip().splitlines()[-1])
+    assert digests[0] == digests[1], "rendering depends on the per-process hash salt"

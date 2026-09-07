@@ -7,7 +7,7 @@
     "positive_rate": 0.00706,
     "instances_per_record": 28.3,
     "n_blank_or_non_responsive": 16,
-    "n_unusable_text": 11,
+    "n_unusable_text": 10,
     "by_contradiction_type": {
       "category_mismatch": 9,
       "direct_negation": 10,
@@ -42,17 +42,17 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.5679,
-      "roc_auc": 0.7973,
-      "macro_f1": 0.6857,
-      "brier": 0.00496,
+      "pr_auc": 0.5711,
+      "roc_auc": 0.7974,
+      "macro_f1": 0.6902,
+      "brier": 0.00485,
       "chosen": {
         "threshold": 0.3543,
-        "precision": 0.2763,
+        "precision": 0.2857,
         "recall": 0.6,
-        "f1": 0.3784,
-        "n_flags": 152,
-        "flags_per_record": 0.43,
+        "f1": 0.3871,
+        "n_flags": 147,
+        "flags_per_record": 0.42,
         "true_positives": 42,
         "missed": 28
       },
@@ -159,17 +159,17 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.4251,
-      "roc_auc": 0.7608,
-      "macro_f1": 0.6669,
-      "brier": 0.0057,
+      "pr_auc": 0.4341,
+      "roc_auc": 0.761,
+      "macro_f1": 0.671,
+      "brier": 0.00558,
       "chosen": {
         "threshold": 0.3543,
-        "precision": 0.2517,
+        "precision": 0.2606,
         "recall": 0.5286,
-        "f1": 0.341,
-        "n_flags": 147,
-        "flags_per_record": 0.42,
+        "f1": 0.3491,
+        "n_flags": 142,
+        "flags_per_record": 0.41,
         "true_positives": 37,
         "missed": 33
       },
@@ -393,17 +393,17 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.7176,
-      "roc_auc": 0.9557,
-      "macro_f1": 0.6697,
-      "brier": 0.00348,
+      "pr_auc": 0.6985,
+      "roc_auc": 0.9494,
+      "macro_f1": 0.5803,
+      "brier": 0.00375,
       "chosen": {
-        "threshold": 0.1021,
-        "precision": 0.224,
+        "threshold": 0.0726,
+        "precision": 0.1053,
         "recall": 0.8,
-        "f1": 0.35,
-        "n_flags": 250,
-        "flags_per_record": 0.71,
+        "f1": 0.186,
+        "n_flags": 532,
+        "flags_per_record": 1.52,
         "true_positives": 56,
         "missed": 14
       },
@@ -435,13 +435,13 @@
         },
         "scope_qualification": {
           "n": 11,
-          "caught": 9,
-          "recall": 0.8182
+          "caught": 8,
+          "recall": 0.7273
         },
         "temporal_inconsistency": {
           "n": 10,
-          "caught": 8,
-          "recall": 0.8
+          "caught": 9,
+          "recall": 0.9
         }
       },
       "by_subtlety": {
@@ -452,30 +452,30 @@
         },
         "2": {
           "n": 34,
-          "caught": 27,
-          "recall": 0.7941
+          "caught": 26,
+          "recall": 0.7647
         },
         "3": {
           "n": 13,
-          "caught": 10,
-          "recall": 0.7692
+          "caught": 11,
+          "recall": 0.8462
         }
       },
       "by_archetype": {
         "it_contractor": {
           "n": 23,
-          "caught": 17,
-          "recall": 0.7391
+          "caught": 19,
+          "recall": 0.8261
         },
         "research_consultant": {
           "n": 18,
-          "caught": 15,
-          "recall": 0.8333
+          "caught": 14,
+          "recall": 0.7778
         },
         "technical_trades": {
           "n": 13,
-          "caught": 10,
-          "recall": 0.7692
+          "caught": 9,
+          "recall": 0.6923
         },
         "visiting_lecturer": {
           "n": 16,
@@ -486,13 +486,13 @@
       "by_register": {
         "hedged": {
           "n": 24,
-          "caught": 20,
-          "recall": 0.8333
+          "caught": 19,
+          "recall": 0.7917
         },
         "terse": {
           "n": 27,
-          "caught": 21,
-          "recall": 0.7778
+          "caught": 22,
+          "recall": 0.8148
         },
         "verbose": {
           "n": 19,
@@ -508,17 +508,17 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.5679,
-      "roc_auc": 0.7973,
-      "macro_f1": 0.6857,
-      "brier": 0.00496,
+      "pr_auc": 0.5711,
+      "roc_auc": 0.7974,
+      "macro_f1": 0.6902,
+      "brier": 0.00485,
       "chosen": {
         "threshold": 0.3543,
-        "precision": 0.2763,
+        "precision": 0.2857,
         "recall": 0.6,
-        "f1": 0.3784,
-        "n_flags": 152,
-        "flags_per_record": 0.43,
+        "f1": 0.3871,
+        "n_flags": 147,
+        "flags_per_record": 0.42,
         "true_positives": 42,
         "missed": 28
       },
@@ -625,17 +625,17 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.4251,
-      "roc_auc": 0.7608,
-      "macro_f1": 0.6669,
-      "brier": 0.0057,
+      "pr_auc": 0.4341,
+      "roc_auc": 0.761,
+      "macro_f1": 0.671,
+      "brier": 0.00558,
       "chosen": {
         "threshold": 0.3543,
-        "precision": 0.2517,
+        "precision": 0.2606,
         "recall": 0.5286,
-        "f1": 0.341,
-        "n_flags": 147,
-        "flags_per_record": 0.42,
+        "f1": 0.3491,
+        "n_flags": 142,
+        "flags_per_record": 0.41,
         "true_positives": 37,
         "missed": 33
       },
@@ -859,17 +859,17 @@
       "n_instances": 9918,
       "n_positive": 70,
       "n_records": 350,
-      "pr_auc": 0.0095,
-      "roc_auc": 0.6028,
-      "macro_f1": 0.3105,
-      "brier": 0.11651,
+      "pr_auc": 0.0088,
+      "roc_auc": 0.5975,
+      "macro_f1": 0.2974,
+      "brier": 0.11617,
       "chosen": {
-        "threshold": 0.0272,
-        "precision": 0.0099,
+        "threshold": 0.0205,
+        "precision": 0.0095,
         "recall": 0.8,
-        "f1": 0.0195,
-        "n_flags": 5663,
-        "flags_per_record": 16.18,
+        "f1": 0.0187,
+        "n_flags": 5915,
+        "flags_per_record": 16.9,
         "true_positives": 56,
         "missed": 14
       },
@@ -891,8 +891,8 @@
         },
         "named_person_dependency": {
           "n": 10,
-          "caught": 7,
-          "recall": 0.7
+          "caught": 6,
+          "recall": 0.6
         },
         "reimbursement_flip": {
           "n": 10,
@@ -901,8 +901,8 @@
         },
         "scope_qualification": {
           "n": 11,
-          "caught": 9,
-          "recall": 0.8182
+          "caught": 10,
+          "recall": 0.9091
         },
         "temporal_inconsistency": {
           "n": 10,
@@ -918,13 +918,13 @@
         },
         "2": {
           "n": 34,
-          "caught": 23,
-          "recall": 0.6765
+          "caught": 24,
+          "recall": 0.7059
         },
         "3": {
           "n": 13,
-          "caught": 12,
-          "recall": 0.9231
+          "caught": 11,
+          "recall": 0.8462
         }
       },
       "by_archetype": {
@@ -940,30 +940,30 @@
         },
         "technical_trades": {
           "n": 13,
-          "caught": 10,
-          "recall": 0.7692
+          "caught": 12,
+          "recall": 0.9231
         },
         "visiting_lecturer": {
           "n": 16,
-          "caught": 10,
-          "recall": 0.625
+          "caught": 8,
+          "recall": 0.5
         }
       },
       "by_register": {
         "hedged": {
           "n": 24,
-          "caught": 20,
-          "recall": 0.8333
+          "caught": 18,
+          "recall": 0.75
         },
         "terse": {
           "n": 27,
-          "caught": 21,
-          "recall": 0.7778
+          "caught": 24,
+          "recall": 0.8889
         },
         "verbose": {
           "n": 19,
-          "caught": 15,
-          "recall": 0.7895
+          "caught": 14,
+          "recall": 0.7368
         }
       },
       "notes": []

@@ -18,11 +18,11 @@ label as well as a legend entry — identity is never colour alone.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-__all__ = ["plot_pr_curves"]
+__all__ = ["plot_pr_curves", "plot_calibration", "plot_robustness"]
 
 # Validated categorical slots 1-3 (light mode) plus text and surface tokens.
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a"]
@@ -191,6 +191,243 @@ def plot_pr_curves(
         ha="left",
     )
     fig.tight_layout(rect=(0, 0.115, 1, 0.93))
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, facecolor=SURFACE)
+    plt.close(fig)
+    return path
+
+
+def plot_calibration(
+    results: Sequence[Any],
+    prevalence: float,
+    output_path: Path | str,
+) -> Path:
+    """Reliability diagram: predicted score against observed positive rate.
+
+    Phase 5 shows a confidence number beside every flag, so that number is a
+    claim about the world and this is where the claim is tested. A method whose
+    curve sits well below the diagonal is over-confident; one far above is
+    under-confident. Either way the number should be presented to reviewers as a
+    band or a rank rather than a percentage.
+
+    Args:
+        results: ``CalibrationResult`` objects, one per method.
+        prevalence: Base rate, drawn as a reference.
+        output_path: Where to write the PNG.
+
+    Returns:
+        The path written.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, axis = plt.subplots(figsize=(6.4, 5.2), dpi=170, facecolor=SURFACE)
+    axis.set_facecolor(SURFACE)
+
+    axis.plot([0, 1], [0, 1], color=TEXT_MUTED, linewidth=1.0, linestyle=(0, (4, 3)), zorder=1)
+    axis.annotate(
+        "perfect calibration",
+        xy=(0.62, 0.62),
+        xytext=(4, -14),
+        textcoords="offset points",
+        fontsize=8,
+        color=TEXT_MUTED,
+        rotation=38,
+        rotation_mode="anchor",
+    )
+    axis.axhline(prevalence, color=TEXT_MUTED, linewidth=0.8, linestyle=(0, (1, 3)), zorder=1)
+    # Right-hand side: the low-score end of every curve sits on top of the base
+    # rate line, so a left-anchored label lands underneath a series.
+    axis.annotate(
+        f"base rate {prevalence:.1%}",
+        xy=(0.99, prevalence),
+        xytext=(0, 6),
+        textcoords="offset points",
+        ha="right",
+        fontsize=7.5,
+        color=TEXT_MUTED,
+    )
+
+    for index, result in enumerate(results):
+        if not result.bin_centres:
+            continue
+        colour = SERIES[index % len(SERIES)]
+        axis.plot(
+            result.bin_centres,
+            result.bin_observed,
+            marker="o",
+            markersize=8,
+            linewidth=2.0,
+            color=colour,
+            markeredgecolor=SURFACE,
+            markeredgewidth=1.8,
+            label=f"{result.method} (ECE {result.ece:.3f})",
+            zorder=3,
+        )
+        axis.annotate(
+            result.method,
+            xy=(result.bin_centres[-1], result.bin_observed[-1]),
+            xytext=(8, 4),
+            textcoords="offset points",
+            fontsize=8,
+            color=TEXT_SECONDARY,
+            zorder=5,
+        )
+
+    axis.set_xlim(0, 1)
+    axis.set_ylim(0, 1)
+    axis.set_xlabel("Predicted score", fontsize=9, color=TEXT_SECONDARY)
+    axis.set_ylabel("Observed positive rate", fontsize=9, color=TEXT_SECONDARY)
+    axis.set_title(
+        "Calibration: does the confidence number mean anything?",
+        fontsize=11,
+        color=TEXT_PRIMARY,
+        loc="left",
+        pad=10,
+    )
+    axis.grid(True, color=GRID, linewidth=0.8, zorder=0)
+    axis.set_axisbelow(True)
+    for side in ("top", "right"):
+        axis.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        axis.spines[side].set_color(GRID)
+    axis.tick_params(colors=TEXT_SECONDARY, labelsize=8, length=0)
+    axis.legend(loc="upper left", frameon=False, fontsize=8, labelcolor=TEXT_SECONDARY)
+    fig.text(
+        0.012,
+        0.015,
+        "Bins holding fewer than 20 instances are omitted: at a 0.7% base rate they "
+        "carry no information.",
+        fontsize=7.5,
+        color=TEXT_MUTED,
+    )
+    fig.tight_layout(rect=(0, 0.05, 1, 1))
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, facecolor=SURFACE)
+    plt.close(fig)
+    return path
+
+
+def plot_robustness(
+    panels: Mapping[str, Mapping[str, Sequence[Any]]],
+    output_path: Path | str,
+    titles: Mapping[str, str] | None = None,
+) -> Path:
+    """Recall by group, with cluster-bootstrap intervals, one panel per cut.
+
+    Dot-and-interval rather than bars. Bars would imply a meaningful zero
+    baseline and, worse, would draw the eye to differences between point
+    estimates that the intervals show are not there — which is exactly the
+    over-reading these cells invite at nine to eleven positives each.
+
+    Args:
+        panels: Panel key -> method -> sequence of ``GroupRecall``.
+        output_path: Where to write the PNG.
+        titles: Panel key -> display title.
+
+    Returns:
+        The path written.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    keys = list(panels)
+    fig, axes = plt.subplots(
+        1, len(keys), figsize=(4.6 * len(keys), 5.0), dpi=170, facecolor=SURFACE
+    )
+    if len(keys) == 1:
+        axes = [axes]
+
+    for axis, key in zip(axes, keys):
+        axis.set_facecolor(SURFACE)
+        methods = list(panels[key])
+        groups: list[str] = []
+        for method in methods:
+            for entry in panels[key][method]:
+                if entry.group not in groups:
+                    groups.append(entry.group)
+        positions = {group: i for i, group in enumerate(groups)}
+
+        for m_index, method in enumerate(methods):
+            colour = SERIES[m_index % len(SERIES)]
+            # Offset each method slightly so overlapping intervals stay legible.
+            offset = (m_index - (len(methods) - 1) / 2) * 0.18
+            for entry in panels[key][method]:
+                y = positions[entry.group] + offset
+                axis.plot(
+                    [entry.low, entry.high],
+                    [y, y],
+                    color=colour,
+                    linewidth=2.0,
+                    solid_capstyle="round",
+                    zorder=2,
+                )
+                axis.plot(
+                    [entry.recall],
+                    [y],
+                    marker="o",
+                    markersize=8,
+                    color=colour,
+                    markeredgecolor=SURFACE,
+                    markeredgewidth=1.8,
+                    zorder=3,
+                    label=method if entry is panels[key][method][0] else None,
+                )
+        # Sample size goes in the tick label, not inside the plot. An in-plot
+        # annotation collides with any interval whose upper bound reaches the
+        # axis edge, which at these cell sizes is most of them.
+        counts = {
+            entry.group: entry.n
+            for method in methods
+            for entry in panels[key][method]
+        }
+        axis.set_yticks(range(len(groups)))
+        axis.set_yticklabels(
+            [f"{g.replace('_', ' ')}  (n={counts.get(g, 0)})" for g in groups], fontsize=8
+        )
+        axis.set_xlim(0, 1.0)
+        axis.set_ylim(-0.6, len(groups) - 0.4)
+        axis.invert_yaxis()
+        axis.set_xlabel("Recall (95% cluster-bootstrap interval)", fontsize=9, color=TEXT_SECONDARY)
+        axis.set_title(
+            (titles or {}).get(key, key), fontsize=10, color=TEXT_PRIMARY, loc="left", pad=8
+        )
+        axis.grid(True, axis="x", color=GRID, linewidth=0.8, zorder=0)
+        axis.set_axisbelow(True)
+        for side in ("top", "right", "left"):
+            axis.spines[side].set_visible(False)
+        axis.spines["bottom"].set_color(GRID)
+        axis.tick_params(colors=TEXT_SECONDARY, labelsize=8, length=0)
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    seen: dict[str, Any] = {}
+    for handle, label in zip(handles, labels):
+        seen.setdefault(label, handle)
+    fig.legend(
+        list(seen.values()),
+        list(seen),
+        loc="lower center",
+        ncol=len(seen),
+        frameon=False,
+        fontsize=8,
+        labelcolor=TEXT_SECONDARY,
+        bbox_to_anchor=(0.5, 0.02),
+    )
+    fig.suptitle(
+        "Robustness: where does the detector fail, and by how much",
+        fontsize=12,
+        color=TEXT_PRIMARY,
+        x=0.011,
+        ha="left",
+        y=0.985,
+    )
+    fig.tight_layout(rect=(0, 0.09, 1, 0.94))
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, facecolor=SURFACE)

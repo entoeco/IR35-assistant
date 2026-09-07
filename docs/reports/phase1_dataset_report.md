@@ -3,7 +3,9 @@
 - **Dataset version:** `1.0.0`
 - **Seed:** `20260907`
 - **Records:** 350
-- **Provenance:** generated from `config/generation.yaml`, `config/text_bank.yaml` and `config/ir35_weights.yaml`. Regenerating from the same configs reproduces this corpus byte-for-byte.
+- **Provenance:** generated from `config/generation.yaml`, `config/text_bank.yaml` and `config/ir35_weights.yaml`. Regenerating from the same configs reproduces this corpus byte-for-byte, in any process.
+
+  That last clause was not true until Phase 4. `render` seeded its random generator with `hash(register)`, and Python salts string hashing per process, so a corpus regenerated in a new interpreter did not match. Every determinism test passed throughout, because they all ran inside one interpreter where the salt is fixed. It is now seeded with `zlib.crc32`, and `tests/test_generator.py` asserts the property across two subprocesses with different `PYTHONHASHSEED` values — the only shape of test that could have caught it.
 
 All content is synthetic (constraint 1). Every name, address, company, rate and email is drawn from the invented pools in the generation config.
 
@@ -44,7 +46,7 @@ The spread is the point. Visiting lecturers skew inside — timetabled, on-site,
 | terse | 127 | 36.3% |
 | verbose | 112 | 32.0% |
 
-Free-text length: median 121 characters, 95th percentile 245, max 330.
+Free-text length: median 122 characters, 95th percentile 244, max 329.
 
 ## Planted contradictions
 
@@ -106,8 +108,8 @@ Kept separately labelled. A blank rationale is a completeness failure the form i
 - Schema validation: **350/350 records valid** (no value outside its declared domain, no outcome leakage).
 - Warnings raised (expected — these are the injected anomalies):
   - `missing_justification`: 6
-  - `justification_too_short`: 5
-- De-identification: **489 entities removed** from free text across 289 records, plus field-level treatment on every record. The stage is exercised on the whole corpus rather than assumed.
+  - `justification_too_short`: 4
+- De-identification: **517 entities removed** from free text across 286 records, plus field-level treatment on every record. The stage is exercised on the whole corpus rather than assumed.
 
 ## Files
 
