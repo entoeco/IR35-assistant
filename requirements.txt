@@ -1,7 +1,7 @@
 # Phase 1 dependencies. Pinned exactly — an unpinned dependency makes the
 # "reproducible from config" claim false the moment a transitive release
 # changes behaviour.
-PyYAML==6.0.2
+PyYAML==6.0.3
 pytest==9.1.1
 
 # Read only. Used once, in Phase 0, to extract the schema from the ESQ
