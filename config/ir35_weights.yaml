@@ -1,0 +1,206 @@
+# =============================================================================
+# IR35 STATUS WEIGHTS  —  the CEST-approximating rule engine
+# =============================================================================
+# This file defines what each structured answer MEANS for employment status.
+# It is consumed by:
+#   * src/models/cest_rules.py  — derives the inside/outside/undetermined label
+#   * src/generate/            — samples answers with an archetype's polarity bias
+#
+# WHAT THIS IS NOT
+#   This is not CEST. It is not HMRC guidance. It is a documented, transparent
+#   approximation of the case-law weighting that CEST encodes, built for the
+#   purpose of generating internally-consistent synthetic labels. It has no
+#   standing in a real determination and must never be presented as a
+#   determination. See the scope constraint in schema.yaml.
+#
+# METHODOLOGICAL CAVEAT (carry this into the Phase 2 write-up)
+#   Because this engine produces the ground-truth labels, ANY rule-based
+#   classifier evaluated against those labels inherits an advantage. The Phase 2
+#   rule baseline therefore uses deliberately different and simpler logic
+#   (lexical cues over free text, not weighted structured answers), and the
+#   evaluation section must state this limitation explicitly. A rule baseline
+#   graded against rule-generated labels is not evidence about the real world.
+#
+# SCORING CONVENTION
+#   Each option value scores in [-2, +2].
+#     positive => points OUTSIDE IR35 (genuinely self-employed)
+#     negative => points INSIDE IR35 (deemed employee)
+#   Scores within a test are averaged, normalised to [-1, +1] by dividing by 2,
+#   then combined with the test weights below. Thresholds turn the total into a
+#   label, with a deliberate abstention band in the middle.
+# =============================================================================
+
+weights_version: "0.1.0"
+
+# Relative importance of each test. Follows the case-law hierarchy that CEST
+# encodes: personal service and control are the irreducible minimum (Ready Mixed
+# Concrete), financial risk next, the remainder as "all the circumstances".
+test_weights:
+  substitution: 0.28
+  control: 0.26
+  financial_risk: 0.22
+  part_and_parcel: 0.10
+  business_on_own_account: 0.09
+  mutuality_of_obligation: 0.05
+
+thresholds:
+  outside_above: 0.12
+  inside_below: -0.12
+  # Between the two, the engine abstains. This band is not a failure mode — it
+  # is the "unable to determine" outcome CEST itself returns, and the dataset
+  # needs those cases because a tool that flags confidently on a genuinely
+  # borderline engagement is worse than one that says it cannot tell.
+
+# -----------------------------------------------------------------------------
+# DETERMINATIVE GATES — evaluated before scoring, in order. First match wins.
+# These encode the small number of answers that settle the question on their own.
+# -----------------------------------------------------------------------------
+gates:
+  - id: office_holder
+    label: inside
+    reason: >-
+      An office holder is within the intermediaries legislation regardless of the
+      other tests (ITEPA 2003 s.5 / Chapter 8-10). Determinative on its own.
+    when:
+      q4_02_office_holder: "Yes"
+
+  - id: substitute_actually_sent_and_paid
+    label: outside
+    reason: >-
+      The worker's business sent a substitute, the engager accepted them, and the
+      worker paid them. Personal service is displaced in fact, not just in
+      theory, which is the strongest available indicator of self-employment.
+    when:
+      q4_03_substitute_sent: "Yes - you accepted them"
+      q4_04_worker_pays_substitute: "Yes"
+
+  - id: paid_another_for_significant_portion
+    label: outside
+    reason: >-
+      The worker paid another person to do a significant portion of the work.
+      Same reasoning: personal service is displaced in practice.
+    when:
+      q4_06_paid_another_person: "Yes"
+
+# -----------------------------------------------------------------------------
+# VALUE SCORES
+# -----------------------------------------------------------------------------
+value_scores:
+
+  # --- substitution --------------------------------------------------------
+  q4_03_substitute_sent:
+    "Yes - you accepted them": 2.0
+    "Yes - you did not accept them": -1.0     # a rejected substitute shows a veto
+    "No - they have not sent a substitute": 0.0
+    "Not applicable - work has not started": 0.0
+  q4_04_worker_pays_substitute:
+    "Yes": 2.0
+    "No": -1.0
+  q4_05_right_to_reject:
+    # CONFIRMED AT THE PHASE 0 GATE: "No" is the outside-leaning answer.
+    # No right to reject == unfettered right of substitution == points outside.
+    "Yes": -1.5
+    "No": 2.0
+  q4_06_paid_another_person:
+    "Yes": 2.0
+    "No": -0.5
+  q4_07_would_pay_substitute:
+    "Yes": 1.5
+    "No": -1.0
+
+  # --- control -------------------------------------------------------------
+  q4_08_moved_from_task:
+    "Yes": -1.5
+    "No - they would have to agree": 0.5
+    "No - that would require a new contract or formal working arrangement": 1.5
+  q4_09_decide_how:
+    "Yes": -2.0
+    "No - the worker solely decides": 2.0
+    "No - the University and the worker agree together": -0.5
+    "Not Relevant - it is highly skilled work": 1.0
+  q4_10_decide_schedule:
+    "Yes": -2.0
+    "No - the worker solely decides": 2.0
+    "No - the engager and the worker agree": -0.5
+    "No - the work is based on agreed deadlines": 1.5
+  q4_11_decide_where:
+    "Yes": -1.5
+    "No - the worker decides": 2.0
+    "No - the task sets the location": 0.5
+    "No - some work has to be done in an agreed location and some can be done at the workers choice": 0.0
+
+  # --- financial risk ------------------------------------------------------
+  q4_12_buys_equipment:
+    "Yes": 1.5
+    "No": -0.5
+  q4_13_vehicle_costs:
+    "Yes": 1.0
+    "No": -0.25
+  q4_14_materials_unreimbursed:
+    "Yes": 2.0
+    "No": -0.5
+  q4_15_other_costs:
+    "Yes": 1.0
+    "No": -0.25
+  q4_16_payment_basis:
+    "An hourly/daily or weekly rate": -1.5
+    "A fixed price for the project": 2.0
+    "A fixed amount for each piece of work completed": 1.5
+    "A percentage of the sales the worker generates": 2.0
+    "a percentage of the organisations profit or savings": 2.0
+  q4_17_put_right:
+    "Yes - unpaid & they would have extra costs that the University would not pay for": 2.0
+    "Yes - unpaid but their only cost would be loss of opportunity to do other work": 1.0
+    "Yes - the worker would put it right in their usual hours at their usual rate or fee": -1.0
+    "No - the work is time-specific or for a single event": 0.0
+    "No": -1.5
+
+  # --- part and parcel -----------------------------------------------------
+  q4_18_benefits:
+    "Yes": -2.0
+    "No": 0.5
+  q4_19_manages_staff:
+    "Yes": -2.0
+    "No": 0.25
+  q4_20_identifies_as:
+    "They work for the organisation (the University)": -2.0
+    "They are an independent worker acting on behalf of the organisation": 0.5
+    "They work for their own business": 2.0
+    "This would not happen": 0.0
+
+  # --- in business on own account -----------------------------------------
+  q4_21_exclusivity_clause:
+    "Yes": -1.5
+    "No": 1.0
+  q4_22_permission_required:
+    "Yes": -1.0
+    "No": 1.0
+  q4_23_ownership_rights:
+    "Yes": 0.5
+    "No": -0.25
+  q4_24_rights_to_university:
+    "Yes": -1.0
+    "No": 1.0
+  q4_25_option_to_buy_rights:
+    "Yes": 1.0
+    "No": -0.5
+  q4_30_majority_of_time:
+    "Yes": -1.5
+    "No": 1.0
+  q4_31_other_clients:
+    "Yes": 2.0
+    "No": -1.5
+
+  # --- mutuality of obligation --------------------------------------------
+  q4_26_previous_contract:
+    "Yes": -1.0
+    "No": 0.5
+  q4_27_first_in_series:
+    "Yes": 1.0
+    "No": -1.0
+  q4_28_starts_immediately_after:
+    "Yes": -2.0
+    "No": 0.5
+  q4_29_extendable:
+    "Yes": -1.0
+    "No": 0.5

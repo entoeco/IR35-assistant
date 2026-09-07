@@ -1,0 +1,248 @@
+# =============================================================================
+# SYNTHETIC DATA GENERATION  —  the reproducibility contract
+# =============================================================================
+# Everything that makes the dataset what it is lives here. Regenerating from
+# this file must reproduce the corpus byte-for-byte; tests/test_generator.py
+# asserts it. If you change anything below, bump `dataset_version` — the old
+# dataset is no longer reproducible from the new config and pretending
+# otherwise is how irreproducible results get published.
+#
+# CONSTRAINT 1: SYNTHETIC DATA ONLY.
+#   Every name, address, company, rate and email produced by this generator is
+#   drawn from the invented pools below. No real person, no real supplier, no
+#   real day rate. The person-name pool is deliberately built from common
+#   surname/forename fragments recombined at random rather than from any real
+#   list of individuals, and the "University of Sussex" context is the only
+#   real-world entity referenced — it names the engager, never a data subject.
+# =============================================================================
+
+dataset_version: "1.0.0"
+seed: 20260907
+n_records: 350
+output:
+  records: data/synthetic/esq_synthetic_v1.jsonl
+  ground_truth: data/synthetic/ground_truth_v1.jsonl
+  report: docs/reports/phase1_dataset_report.md
+
+# -----------------------------------------------------------------------------
+# TARGETS. Checked after generation and reported; the generator does not force
+# them by rejection sampling, because forcing a label distribution would break
+# the causal link between answers and label that the Phase 0 gate chose (option
+# g1). The archetype mix and biases below are tuned so these fall out naturally.
+# -----------------------------------------------------------------------------
+targets:
+  inside_rate: [0.25, 0.30]      # raised from the brief's 0.14 at the Phase 0 gate
+  undetermined_rate: [0.05, 0.12]
+  contradiction_record_rate: [0.13, 0.17]
+  tolerance_note: >-
+    These are acceptance ranges, not constraints on the sampler. If a run falls
+    outside them the fix is to retune archetype_mix or polarity_bias and
+    regenerate, not to resample until the numbers look right.
+
+# -----------------------------------------------------------------------------
+# ENGAGEMENT ARCHETYPES
+# `polarity_bias` is the probability of selecting an outside-leaning option for
+# each IR35 test. It is a bias on the sampler, not a label: an IT contractor
+# with bias 0.55 on control still lands inside on control 45% of the time, so
+# each archetype spans a range rather than collapsing to a stereotype.
+# -----------------------------------------------------------------------------
+archetype_mix:
+  it_contractor: 0.30
+  visiting_lecturer: 0.25
+  technical_trades: 0.20
+  research_consultant: 0.25
+
+archetypes:
+
+  it_contractor:
+    label: "IT contractor"
+    description: >-
+      Systems, integration and infrastructure work, usually via a personal
+      service company, usually time-boxed against a defined deliverable. The
+      archetype where HMRC challenge is most expected, and where managers are
+      most practised at answering the form.
+    polarity_bias:
+      substitution: 0.55
+      control: 0.60
+      financial_risk: 0.55
+      part_and_parcel: 0.75
+      business_on_own_account: 0.75
+      mutuality_of_obligation: 0.60
+    via_third_party_rate: 0.85
+    engagement_months: [2, 12]
+    register_bias: {verbose: 0.30, terse: 0.45, hedged: 0.25}
+
+  visiting_lecturer:
+    label: "Visiting lecturer"
+    description: >-
+      Teaching delivery against a published timetable. Structurally the hardest
+      case for the university sector: the work is highly skilled and often
+      genuinely autonomous in method, but timetabled, on-site, repeated
+      year on year, and student-facing. Expected to skew inside, and expected
+      to be where the detector performs worst — which is a Phase 4 finding, not
+      a defect to hide.
+    polarity_bias:
+      substitution: 0.15
+      control: 0.35
+      financial_risk: 0.20
+      part_and_parcel: 0.35
+      business_on_own_account: 0.45
+      mutuality_of_obligation: 0.25
+    via_third_party_rate: 0.25
+    engagement_months: [3, 10]
+    register_bias: {verbose: 0.45, terse: 0.15, hedged: 0.40}
+
+  technical_trades:
+    label: "Technical / trades contractor"
+    description: >-
+      Estates and facilities work — electrical, mechanical, specialist
+      installation, testing and inspection. Carries genuine capital outlay and
+      real rectification liability, so it skews outside on financial risk while
+      often being tightly controlled on location and access.
+    polarity_bias:
+      substitution: 0.60
+      control: 0.50
+      financial_risk: 0.80
+      part_and_parcel: 0.80
+      business_on_own_account: 0.70
+      mutuality_of_obligation: 0.65
+    via_third_party_rate: 0.70
+    engagement_months: [1, 6]
+    register_bias: {verbose: 0.15, terse: 0.60, hedged: 0.25}
+
+  research_consultant:
+    label: "Research consultant"
+    description: >-
+      Specialist advisory input to a funded project — statistical, clinical,
+      policy or domain expertise. Autonomous in method, but frequently
+      integrated into a project team, and IP terms matter more here than
+      anywhere else on the form.
+    polarity_bias:
+      substitution: 0.35
+      control: 0.60
+      financial_risk: 0.40
+      part_and_parcel: 0.55
+      business_on_own_account: 0.60
+      mutuality_of_obligation: 0.45
+    via_third_party_rate: 0.55
+    engagement_months: [2, 18]
+    register_bias: {verbose: 0.50, terse: 0.20, hedged: 0.30}
+
+# -----------------------------------------------------------------------------
+# AMBIGUOUS CASES
+# A deliberate slice where the tests pull hard in opposite directions — strong
+# substitution rights alongside heavy day-to-day control, say — so that the rule
+# engine lands in the abstention band. Without this slice the corpus would
+# contain no "unable to determine" cases and would overstate how decidable real
+# submissions are.
+# -----------------------------------------------------------------------------
+ambiguity:
+  rate: 0.12
+  method: opposing_bias
+  # Two tests are chosen at random and pushed to opposite extremes.
+  push_outside_bias: 0.9
+  push_inside_bias: 0.1
+
+# -----------------------------------------------------------------------------
+# WRITING REGISTER
+# Register is sampled PER RECORD, not per field. A manager writes the whole form
+# in one voice, and Phase 4's style-invariance test depends on register being a
+# record-level property: the same underlying engagement is re-rendered in all
+# three registers from one saved state, and the detector must produce the same
+# flags for all three.
+# -----------------------------------------------------------------------------
+registers:
+  mix: {verbose: 0.35, terse: 0.30, hedged: 0.35}
+  # Per-archetype register_bias above overrides this mix when present.
+  use_archetype_bias: true
+
+  verbose:
+    description: "HR-literate, complete sentences, policy vocabulary, hedged with process detail."
+    target_sentences: [2, 4]
+  terse:
+    description: "Clipped, technical, often verbless fragments. Minimal explanation."
+    target_sentences: [1, 2]
+  hedged:
+    description: "Vague and non-committal. Epistemic markers, conditionals, deferred certainty."
+    target_sentences: [1, 3]
+
+# -----------------------------------------------------------------------------
+# CONTRADICTION PLANTING
+# -----------------------------------------------------------------------------
+contradictions:
+  # Proportion of records carrying at least one planted contradiction.
+  record_rate: 0.15
+
+  # Given that a record has any, how many.
+  count_distribution: {1: 0.75, 2: 0.20, 3: 0.05}
+
+  # How hard they are to see.
+  #   1 = blatant: the text plainly says the opposite.
+  #   2 = requires reading: a condition, a veto, or a reimbursement flips it.
+  #   3 = requires domain knowledge: the text is only contradictory if you know
+  #       the form's own exclusions (commuting, laptops, minor consumables) or
+  #       the case law. These are the ones a busy reviewer misses.
+  subtlety_distribution: {1: 0.30, 2: 0.45, 3: 0.25}
+
+  # Bias planting towards the pairs where a contradiction most directly flips a
+  # determination. Not exclusive — the low-priority pairs still get cases, or
+  # the evaluation would say nothing about them.
+  high_priority_pair_weight: 2.5
+
+  # A contradiction is only interesting where it UNDERMINES the answer given.
+  # Planting into an inside-leaning answer produces text that argues for
+  # outside, which is a real phenomenon but a much smaller share of the risk.
+  target_outside_leaning_rate: 0.80
+
+# -----------------------------------------------------------------------------
+# NON-CONTRADICTION ANOMALIES
+# Not the same thing, and kept separately labelled so Phase 4 can report them
+# apart. A blank or non-responsive justification is a completeness failure the
+# form itself cares about ("Your ESQ will be rejected if not all fields have
+# been completed") and a reviewer needs to see it, but it is not a contradiction
+# and scoring it as one would flatter the detector.
+# -----------------------------------------------------------------------------
+anomalies:
+  non_responsive_rate: 0.03
+  blank_justification_rate: 0.02
+  routing_violation_rate: 0.02
+
+# -----------------------------------------------------------------------------
+# SYNTHETIC IDENTITY POOLS (constraint 1)
+# Recombined fragments, not real people. The de-identifier is run over the
+# output anyway, so that the pipeline order is exercised on every record.
+# -----------------------------------------------------------------------------
+identity_pools:
+  titles: [Mr, Ms, Mrs, Dr, Prof, Mx]
+  forename_fragments: [Al, Ber, Cas, Dar, El, Fen, Gar, Hal, Im, Jor, Kel, Lor, Mar, Nes, Or, Pel, Quen, Ros, Sel, Tam, Ur, Val, Wen, Yar, Zel]
+  forename_endings: [an, ia, en, is, on, ara, ie, us, ette, ov]
+  surname_fragments: [Ash, Bram, Cald, Dun, East, Fair, Green, Hart, Ings, Jenn, Kirk, Lamb, Mor, Nor, Oak, Prid, Quar, Rid, Sten, Thorn, Under, Vane, Whit, Yew]
+  surname_endings: [ley, wood, field, ton, worth, bury, combe, ridge, well, stone]
+  company_suffixes: ["Ltd", "Limited", "Consulting Ltd", "Associates Ltd", "Services Ltd", "LLP"]
+  street_names: [Marchmont, Elder, Bramble, Kestrel, Wharfdale, Sandpiper, Colliers, Ferndale, Wickham, Larkspur]
+  street_types: [Road, Lane, Close, Avenue, Way, Gardens, Rise, Court]
+  towns: [Brightonford, Lewesbury, Hovedale, Uckwell, Portstead, Havenbridge, Steyford, Arunwick]
+  postcode_areas: [BN, RH, TN, PO, GU]
+  email_domains: [example.com, example.org, example.net]
+  # University-side context. The engager is real; the people are not.
+  schools:
+    - "School of Engineering and Informatics"
+    - "School of Life Sciences"
+    - "Brighton and Sussex Medical School"
+    - "School of Media, Arts and Humanities"
+    - "School of Business, Management and Economics"
+    - "School of Psychology"
+    - "Estates and Facilities Management"
+    - "IT Services"
+    - "Library and Learning Services"
+    - "School of Law, Politics and Sociology"
+
+# -----------------------------------------------------------------------------
+# VALIDATION APPLIED TO EVERY GENERATED RECORD
+# -----------------------------------------------------------------------------
+validation:
+  enforce_value_domains: true
+  enforce_routing: true
+  require_justification_for_routed_fields: true
+  min_free_text_chars: 15
+  fail_on_error: true

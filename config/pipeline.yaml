@@ -1,0 +1,76 @@
+# =============================================================================
+# PIPELINE CONFIGURATION — logging and de-identification
+# =============================================================================
+
+logging:
+  level: INFO
+
+  # CONSTRAINT 4. Identifiers and metadata are logged; free-text content is not.
+  # When false, content values are replaced by {sha256, chars} summaries — enough
+  # to correlate a value across pipeline stages and detect that it changed,
+  # without retaining the text.
+  #
+  # The digest is a PSEUDONYM, not anonymisation: short predictable strings hash
+  # to predictable values, so log records remain personal data and inherit the
+  # same retention rules as the source.
+  #
+  # Enabling this writes free-text personal data to the log. It exists for
+  # debugging the generator against synthetic data. It must not be enabled in
+  # any environment that has seen a real submission.
+  log_content: false
+  content_max_chars: 500
+
+deidentification:
+  # CONSTRAINT 3. This stage runs FIRST, before validation, feature extraction
+  # or any model call. On synthetic data it is a near no-op by construction —
+  # there is nothing real to remove — but it is a live, tested component, not a
+  # comment, because the day it stops being a no-op must not be the day it is
+  # first exercised.
+  enabled: true
+
+  # Fail closed. If a scrubber raises, drop the record rather than pass it on.
+  on_error: raise
+
+  # Field-level treatment by pii_class from schema.yaml.
+  field_policy:
+    direct_identifier: replace          # -> stable surrogate token
+    quasi_identifier: pseudonymise      # -> salted hash, retains cohort utility
+    sensitive_commercial: mask          # -> <COMPANY_NO>, <AMOUNT>
+    none: keep
+
+  # Entity-level scrubbing of FREE TEXT. Field policy is not enough: a manager
+  # will write a name into a justification box, and that is where the residual
+  # risk actually lives.
+  entity_scrubbing:
+    enabled: true
+    detectors:
+      - email
+      - uk_phone
+      - uk_postcode
+      - money
+      - company_number
+      - ni_number
+      - url
+      - date_of_birth
+      - person_name        # gazetteer + title/pattern based; see limitations
+    # Surrogates are stable within a record so that "Dr Patel ... Patel later
+    # confirmed" keeps its coreference and the text stays readable to a
+    # reviewer. They are NOT stable across records — that would rebuild a
+    # linkable identifier across the corpus.
+    surrogate_scope: record
+
+  # Pseudonymisation salt. In production this is injected from the environment
+  # and never committed; a fixed development salt keeps synthetic runs
+  # reproducible. Rotating the salt breaks linkage by design.
+  salt_env_var: IR35_DEID_SALT
+  development_salt: "phase1-synthetic-only"
+
+  # Cohort variables kept in pseudonymised form because Phase 4's disparity
+  # analysis needs them. Throwing them away would make the fairness testing
+  # impossible, which is a worse outcome than holding a salted hash.
+  retain_pseudonymised:
+    - q5_01_school_division
+
+paths:
+  synthetic_data: data/synthetic
+  reports: docs/reports
