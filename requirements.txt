@@ -1,9 +1,16 @@
-# Phase 1 dependencies. Pinned exactly — an unpinned dependency makes the
-# "reproducible from config" claim false the moment a transitive release
-# changes behaviour.
+# Pinned exactly. An unpinned dependency makes the "reproducible from config"
+# claim false the moment a transitive release changes behaviour.
+
+# Core: config loading and tests.
 PyYAML==6.0.3
 pytest==9.1.1
 
+# Phase 2 baselines and evaluation.
+numpy==2.4.4
+scipy==1.17.1
+scikit-learn==1.8.0
+matplotlib==3.10.9
+
 # Read only. Used once, in Phase 0, to extract the schema from the ESQ
-# template. Not needed to regenerate the corpus.
+# template. Not needed to regenerate the corpus or run the baselines.
 openpyxl==3.1.5

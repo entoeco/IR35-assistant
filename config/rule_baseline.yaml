@@ -1,0 +1,260 @@
+# =============================================================================
+# RULE / KEYWORD BASELINE
+# =============================================================================
+# DELIBERATELY A DIFFERENT SUBSTRATE FROM THE LABELLING ENGINE.
+#   config/ir35_weights.yaml scores STRUCTURED ANSWERS to produce the status
+#   label. This baseline reads FREE TEXT and compares it against the answer's
+#   polarity. They share no logic and no coefficients. That separation is what
+#   stops Phase 2 grading the generator against itself — see the caveat at the
+#   top of ir35_weights.yaml.
+#
+# HONEST ATTEMPT, NOT A STRAWMAN.
+#   The point of the comparison is to find out where a lexical method actually
+#   fails, so this baseline gets the things a competent analyst would build:
+#   negation handling, family-level lexicons that generalise beyond the per-pair
+#   cue lists, regex for rate structures, and priority weighting for the pairs
+#   where a miss costs most. If the transformer cannot beat this, that is a
+#   finding worth reporting rather than a result to engineer away.
+#
+# CUE LEAKAGE.
+#   The family lexicons below were written after the Phase 1 text bank existed,
+#   so they carry the same contamination risk as the Phase 0 pair cues. The
+#   de-leaking procedure in src/evaluate/leakage.py is applied to BOTH, and the
+#   baseline is reported as a bounded range rather than a single number.
+# =============================================================================
+
+rule_baseline_version: "0.1.0"
+
+scoring:
+  # Weighted evidence, squashed through a logistic. Interpretable by design: a
+  # reviewer can be told exactly which phrases fired.
+  weights:
+    pair_cue: 1.30          # a cue authored for this specific pair
+    family_lexicon: 0.95    # a cross-cutting contradiction-family term
+    regex: 1.10             # structural patterns, e.g. a day rate
+    negation_penalty: 1.40  # a matched cue that turns out to be negated
+  offset: 1.55              # subtracted before the logistic; sets the base rate
+  # High-priority pairs get a lower effective bar, because a missed
+  # contradiction on substitution or payment basis flips a determination while a
+  # missed one on 4.25 rarely does. Optimising for recall means spending the
+  # false-positive budget where the stakes are.
+  priority_boost: 0.45
+  max_score: 0.99
+
+# -----------------------------------------------------------------------------
+# NEGATION
+# A naive keyword matcher fires on "we do NOT require them on site". Any cue
+# preceded by a negator within `window` tokens is suppressed and penalised.
+# -----------------------------------------------------------------------------
+negation:
+  window: 4
+  markers:
+    - "not"
+    - "no"
+    - "never"
+    - "without"
+    - "nor"
+    - "n't"
+    - "cannot"
+    - "neither"
+    - "unable to"
+    - "free from"
+    - "other than"
+
+# -----------------------------------------------------------------------------
+# FAMILY LEXICONS
+# Grouped by contradiction TYPE rather than by pair, so the baseline has some
+# ability to fire on a pair whose own cue list does not cover the phrasing.
+# `applies_to_tests` restricts each family to the IR35 tests where it makes
+# sense — "reimbursed" is evidence against a financial-risk answer and noise
+# against a mutuality one.
+# -----------------------------------------------------------------------------
+families:
+
+  reimbursement_flip:
+    applies_to_tests: [financial_risk, substitution]
+    contradicts_polarity: outside      # fires when the answer leans outside
+    terms:
+      - "reimburse"
+      - "reimbursed"
+      - "recharge"
+      - "recharged"
+      - "we cover"
+      - "we pay"
+      - "we paid"
+      - "we would cover"
+      - "claimed back"
+      - "claims back"
+      - "claim it back"
+      - "expenses system"
+      - "on production of receipts"
+      - "invoice it back"
+      - "invoices it back"
+      - "at cost"
+      - "we provide"
+      - "we will supply"
+      - "issued with"
+      - "booked and paid"
+      - "no cost to them"
+
+  control_supervision:
+    applies_to_tests: [control]
+    contradicts_polarity: outside
+    terms:
+      - "supervised"
+      - "supervises"
+      - "supervision"
+      - "reports to"
+      - "report to"
+      - "line manager"
+      - "signed off"
+      - "sign off"
+      - "signs off"
+      - "our template"
+      - "our process"
+      - "our procedure"
+      - "must follow"
+      - "directs the work"
+      - "core hours"
+      - "monday to friday"
+      - "nine to five"
+      - "on site"
+      - "must attend"
+      - "rota"
+      - "shift pattern"
+      - "timetable"
+      - "book on and off"
+      - "desk in the department"
+      - "our equipment"
+      - "cannot leave"
+
+  named_person:
+    applies_to_tests: [substitution]
+    contradicts_polarity: outside
+    terms:
+      - "this individual"
+      - "this person"
+      - "this one person"
+      - "only person"
+      - "nobody else"
+      - "no one else"
+      - "personally"
+      - "names them"
+      - "their own track record"
+      - "own accreditation"
+      - "their accreditation"
+      - "sits with this individual"
+      - "approved by"
+      - "security cleared"
+      - "vetting"
+      - "we would need to be satisfied"
+
+  integration:
+    applies_to_tests: [part_and_parcel]
+    contradicts_polarity: outside
+    terms:
+      - "sussex.ac.uk"
+      - "university email"
+      - "staff badge"
+      - "staff card"
+      - "staff list"
+      - "department web page"
+      - "part of the team"
+      - "line manage"
+      - "line manages"
+      - "appraisal"
+      - "appraisals"
+      - "timesheets"
+      - "gym"
+      - "library access"
+      - "staff discount"
+      - "parking permit"
+      - "occupational health"
+
+  continuity:
+    applies_to_tests: [mutuality_of_obligation, business_on_own_account]
+    contradicts_polarity: outside
+    terms:
+      - "last three years"
+      - "for the last"
+      - "each academic year"
+      - "every year"
+      - "renewed"
+      - "renew"
+      - "extension"
+      - "extended"
+      - "continues"
+      - "continuation"
+      - "seamlessly"
+      - "roll on"
+      - "rolls on"
+      - "tend to roll"
+      - "the day after"
+      - "no break"
+      - "fourth"
+      - "third time"
+      - "previously"
+      - "full time"
+      - "full-time"
+      - "five days a week"
+      - "four days a week"
+      - "fte"
+      - "main engagement"
+      - "only client"
+      - "their only"
+      - "no other clients"
+
+  exclusivity:
+    applies_to_tests: [business_on_own_account]
+    contradicts_polarity: outside
+    terms:
+      - "exclusivity"
+      - "non-compete"
+      - "cannot work for"
+      - "restricted from"
+      - "may not"
+      - "must notify"
+      - "seek approval"
+      - "conflict of interest"
+      - "sign-off from"
+
+  office_holder:
+    applies_to_tests: [office_holder]
+    contradicts_polarity: outside
+    terms:
+      - "board member"
+      - "trustee"
+      - "governor"
+      - "company secretary"
+      - "director"
+      - "chairs the"
+      - "oversight committee"
+      - "treasurer"
+
+# -----------------------------------------------------------------------------
+# STRUCTURAL REGEXES
+# Where the contradiction is a shape rather than a word. The rate pattern is the
+# clearest case: "fixed price for the project" answered alongside a day rate in
+# the text is a category mismatch that no single keyword captures.
+# -----------------------------------------------------------------------------
+regexes:
+  - id: day_rate_against_fixed_price
+    applies_to_pairs: [p_4_16_payment_basis]
+    only_when_answer_contains: "fixed"
+    # Note the \[?AMOUNT\]? alternative: de-identification has already replaced
+    # the figure with [AMOUNT] by the time any model sees the text, and the rate
+    # basis is exactly what that masking was designed to preserve.
+    pattern: '(?:\b(?:day|daily|hourly|weekly)\s+rate\b)|(?:per\s+(?:hour|day|week))|(?:\[?AMOUNT\]?\s*(?:per|a)\s+(?:hour|day|week))|(?:timesheet)'
+    explanation: "the justification describes a time-based rate while the answer selects a fixed price"
+
+  - id: fte_or_day_count
+    applies_to_pairs: [p_4_30_majority_of_time]
+    only_when_answer_contains: "No"
+    pattern: '\b(?:0\.\d\s*fte|\d\s*days? a week|full[- ]time|five days)\b'
+    explanation: "the justification describes a near-full-time commitment while the answer says this is not the majority of their time"
+
+  - id: back_to_back_dates
+    applies_to_pairs: [p_4_28_starts_immediately_after]
+    only_when_answer_contains: "No"
+    pattern: '\b(?:seamlessly|the day after|no break|immediately after|picks up in)\b'
+    explanation: "the justification describes continuity while the answer denies a back-to-back start"
