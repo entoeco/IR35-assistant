@@ -27,7 +27,7 @@ cd ir35-assistant
 python3 -m venv .venv
 source .venv/bin/activate          # .venv\Scripts\activate on Windows
 pip install -r requirements.txt
-pytest                             # 267 tests, all offline, ~1 minute
+pytest                             # 288 tests, all offline, ~1 minute
 streamlit run src/ui/app.py        # the reviewer app, at http://localhost:8501
 ```
 
@@ -64,11 +64,12 @@ src/evaluate/       Metrics, splits, leakage checks, calibration, plots.
 src/review/         Phase 5: turning a raw score into a reviewer-facing band,
                     running the pipeline on one live submission, and
                     capturing accept/dismiss decisions. Phase 7 added
-                    src/review/materiality.py — see below.
+                    src/review/materiality.py and, as a follow-up,
+                    src/review/review_priority.py — see below.
 src/models/cross_field.py  Phase 7: tick-box vs tick-box consistency checks
                     (as opposed to tick-box vs its own free text).
 src/ui/app.py       The Streamlit reviewer app.
-tests/              267 tests. Run all of them with `pytest`.
+tests/              288 tests. Run all of them with `pytest`.
 ```
 
 ## Running things
@@ -150,7 +151,7 @@ The files, in the order you'd usually touch them:
 | `config/rule_baseline.yaml` | The Phase 2 keyword/rule detector's cue lists and scoring. |
 | `config/model.yaml` | Which inference backend runs (mock / local transformer / local LLM / hosted API) and its prompts. |
 | `config/pipeline.yaml` | De-identification policy and what gets logged. |
-| `config/review.yaml` | The Phase 5 app: confidence-band cut-points and wording, decision-log policy, sample submissions offered. Phase 7 added the materiality tiers and cross-field wording. |
+| `config/review.yaml` | The Phase 5 app: confidence-band cut-points and wording, decision-log policy, sample submissions offered. Phase 7 added the materiality tiers, cross-field wording, and (follow-up) the review-priority levels and scoring weights. |
 
 ## Scope and posture (read this before touching real data)
 
@@ -234,6 +235,7 @@ what was rejected and why — lives in `docs/`:
 - `docs/reports/phase6_handover_report.md` — the install-gate fix, the
   lockfile, and the handover materials referenced below.
 - `docs/reports/phase7_consistency_and_materiality.md` — tick-box vs
-  tick-box consistency checks, and "materiality" (how much a *kind* of
-  mismatch typically matters) — including the design argument for why this
-  is not the RAG-style status this project deliberately does not build.
+  tick-box consistency checks, "materiality" (how much a *kind* of mismatch
+  typically matters), and a follow-up "review priority" attention scale —
+  including the design argument for why none of these is the RAG-style or
+  Likert-style status this project deliberately does not build.

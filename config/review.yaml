@@ -193,3 +193,97 @@ cross_field:
     compare tick-boxes against each other. Some are data-quality issues (a
     question answered that the form's own routing should have skipped);
     others are two answers that don't sit well together on their face.
+
+# =============================================================================
+# Review priority (src/review/review_priority.py) — a 5-point scale
+# summarising how much reviewer attention a submission's flags add up to,
+# taken together.
+#
+# WHAT THIS IS NOT: it is not a Likert scale for "how likely is this
+# engagement to be inside or outside IR35", and it must never be read or
+# worded as one. It is an aggregate of information already shown elsewhere
+# on the page — how many flags and findings there are, how strong the
+# evidence for each is (its confidence band / severity), and how much that
+# *kind* of mismatch typically matters (its materiality tier, gates
+# overriding everything else, same as materiality.py) — collapsed into one
+# number so a reviewer triaging many submissions can tell "needs a close
+# look" from "nothing much here" without reading every card first. It says
+# nothing about which way any answer leans, because none of its three
+# inputs (count, evidence strength, importance-of-category) encode
+# direction — the same property materiality.py's inputs have, extended to
+# an aggregate. See docs/reports/phase7_consistency_and_materiality.md for
+# the fuller discussion of why a per-submission status/lean was rejected
+# and this was built instead.
+#
+# WHERE THE THRESHOLDS COME FROM: unlike confidence_bands above, there is no
+# Phase 4-style calibration run behind these numbers — there is no ground
+# truth for "how much combined attention a real submission deserves" to
+# calibrate against, any more than there is for ir35_weights.yaml's test
+# weights (that file's own comments make the same admission: "a
+# transparent approximation ... not a statistically fitted model"). These
+# are a starting, adjustable configuration, not a measured cut-point — the
+# honest position is to say so here rather than imply a rigour that is not
+# there.
+# =============================================================================
+review_priority:
+  levels:
+    - key: none
+      label: "Nothing flagged"
+      description: >-
+        No inconsistencies were found among the tick-box/text pairs and
+        tick-box/tick-box checks this tool runs. This is not the same as
+        "outside IR35" — it means nothing checked here disagreed with
+        itself, not that every relevant fact has been considered.
+    - key: light
+      label: "Light review"
+      description: >-
+        A small number of lower-stakes inconsistencies were found — worth a
+        look, unlikely to need much time.
+    - key: moderate
+      label: "Moderate review"
+      description: >-
+        Several inconsistencies were found, or one touching a factor case
+        law weighs fairly heavily.
+    - key: close
+      label: "Close review"
+      description: >-
+        A strong individual inconsistency was found on a foundational test,
+        or several inconsistencies taken together add up to a similar
+        amount of concern.
+    - key: urgent
+      label: "Urgent review"
+      description: >-
+        At least one inconsistency touches a fact case law treats as
+        potentially decisive on its own (the same gates materiality.py
+        flags as "could be decisive on its own") — worth checking before
+        anything else on this submission.
+
+  # How section-3/4 flags and findings are combined into one score, then
+  # mapped to a level via `thresholds` below. Any item whose materiality is
+  # a gate short-circuits straight to the "urgent" level, regardless of
+  # score — the same override materiality.py already applies per-item,
+  # applied here at the whole-submission level.
+  scoring:
+    band_weight:
+      "Worth a look": 1
+      "Priority": 2
+      "High priority": 3
+    cross_field_severity_weight:
+      low: 1
+      medium: 2
+      high: 3
+    materiality_weight:
+      "One of several contributing factors": 1.0
+      "A major factor": 1.5
+      "One of the two foundational tests": 2.0
+    # No entry needed for the gate tier — it overrides scoring entirely (see
+    # above). An item with no materiality tier at all (e.g.
+    # ir35_weights_config was not supplied) scores with a 1.0 multiplier.
+    default_materiality_weight: 1.0
+    thresholds:
+      - key: close
+        min_score: 6
+      - key: moderate
+        min_score: 3
+      - key: light
+        min_score: 0

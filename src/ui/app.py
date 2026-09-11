@@ -18,13 +18,16 @@ that could compute one (a fact a test enforces, not just a promise this file
 keeps). See ``docs/reports/phase5_interface_report.md`` for the reasoning and
 the WCAG 2.2 AA walkthrough.
 
-Two things added after Phase 5 (``docs/reports/phase7_consistency_and_materiality.md``):
-tick-box-vs-tick-box consistency findings (section 4 below), and a
-"why this matters" line attached to every flag and finding, describing how
-much that KIND of mismatch typically matters to a determination — never
-which way this submission leans. That line comes from static config (test
-weights and gate definitions), not from anything computed about this record;
-see ``src/review/materiality.py`` for the argument in full.
+Three things added after Phase 5 (``docs/reports/phase7_consistency_and_materiality.md``):
+tick-box-vs-tick-box consistency findings (section 5 below), a "why this
+matters" line attached to every flag and finding, describing how much that
+KIND of mismatch typically matters to a determination — never which way
+this submission leans (``src/review/materiality.py`` has the argument in
+full) — and a five-point "review priority" summary (section 3) aggregating
+every flag and finding into "how much attention does this need". Review
+priority is emphatically NOT a Likert scale for "how likely is this inside
+or outside IR35" — that was considered and rejected for the same reasons the
+original RAG-status idea was; see ``src/review/review_priority.py``.
 
 ACCESSIBILITY NOTES ARE INLINE, next to the code they apply to, because a
 checklist kept only in a separate document is the first thing that goes stale.
@@ -189,6 +192,42 @@ st.markdown(
         background: #ffffff;
         margin-bottom: 0.35rem;
         color: #2c2c2c;
+    }
+
+    /* Review priority — deliberately a black/white "filled segments" meter,
+       never the band colours or a red/green scale. This is an AGGREGATE
+       of what sections 4-5 already show (how many flags, how strong the
+       evidence, how much it typically matters) — not a new, different kind
+       of claim — so it shares materiality's grayscale palette rather than
+       inventing a third colour language that could read as a traffic light
+       for "inside vs outside IR35". The filled-segment count is always
+       paired with the level's text label, never colour alone (WCAG 1.4.1). */
+    .priority-banner {
+        border: 2px solid #2c2c2c;
+        border-radius: 6px;
+        padding: 1rem 1.2rem;
+        margin-bottom: 1rem;
+        background: #ffffff;
+    }
+    .priority-meter {
+        display: inline-flex;
+        gap: 5px;
+        margin-right: 0.75rem;
+        vertical-align: middle;
+    }
+    .priority-segment {
+        width: 16px;
+        height: 16px;
+        border: 2px solid #2c2c2c;
+        border-radius: 3px;
+        display: inline-block;
+        background: #ffffff;
+    }
+    .priority-segment.filled { background: #2c2c2c; }
+    .priority-label {
+        font-weight: 700;
+        font-size: 1.1rem;
+        vertical-align: middle;
     }
     </style>
     <a class="skip-link" href="#main-heading">Skip to main content</a>
@@ -359,7 +398,7 @@ with st.sidebar:
             "cases where they seem to pull in different directions, so a human "
             "reviewer can look at exactly those cases rather than the whole "
             "form. It also checks tick-box answers against *each other* — "
-            "section 4 below — for places where two answers on the form don't "
+            "section 5 below — for places where two answers on the form don't "
             "sit well together. Accepting or dismissing a flag or finding "
             "records your judgement about *that one inconsistency* — it does "
             "not set the questionnaire's outcome, which stays entirely a "
@@ -527,9 +566,65 @@ with col_valid:
             st.caption(f"…and {len(warnings) - 6} more completeness notes.")
 
 # =============================================================================
-# 3. Flags
+# 3. Review priority — an AGGREGATE of sections 4-5 below (how many flags and
+# findings, how strong the evidence for each, how much that kind of mismatch
+# typically matters), collapsed into one five-point scale so a reviewer
+# triaging many submissions can tell "needs a close look" from "nothing much
+# here" at a glance.
+#
+# THIS IS NOT A STATUS. Its own config comments (config/review.yaml) and
+# module docstring (src/review/review_priority.py) both say so, and this is
+# the third place: none of count, evidence strength, or importance-of-
+# category — the only three things that go into this number — encode which
+# way any answer leans. It is worded around "how much attention", never
+# "how likely inside/outside", and the wording is checked against a
+# forbidden-phrase list the same way the scope banner and materiality text
+# are (tests/test_review_priority.py::test_configured_levels_never_mention_a_lean_or_a_status).
 # =============================================================================
-st.header("3. Flags for review")
+st.header("3. How much attention does this submission need?")
+
+priority = result.review_priority
+PRIORITY_LEVEL_ORDER = ["none", "light", "moderate", "close", "urgent"]
+filled = PRIORITY_LEVEL_ORDER.index(priority.key) + 1 if priority is not None and priority.key in PRIORITY_LEVEL_ORDER else 0
+segments_html = "".join(
+    f'<span class="priority-segment{" filled" if i < filled else ""}" aria-hidden="true"></span>'
+    for i in range(5)
+)
+st.markdown(
+    f'<div class="priority-banner" role="note">'
+    f'<span class="priority-meter">{segments_html}</span>'
+    f'<span class="priority-label">{priority.label if priority else "Not available"}</span>'
+    f"<p>{priority.description if priority else ''}</p>"
+    f"<p><em>This is a summary of the flags below, not a prediction of the "
+    f"outcome — it does not say whether the engagement is inside or outside "
+    f"IR35, only how much of what this tool checks disagreed with itself.</em></p>"
+    f"</div>",
+    unsafe_allow_html=True,
+)
+
+with st.expander("What goes into this, and what doesn't"):
+    st.markdown(
+        "This combines three things also shown below: **how many** flags "
+        "and tick-box consistency findings there are, **how strong the "
+        "evidence** is for each (its confidence band or severity), and "
+        "**how much that kind of question typically matters** (its "
+        "materiality tier, when available). A single finding touching a "
+        "fact case law treats as potentially decisive on its own always "
+        "puts a submission at *Urgent review*, however small everything "
+        "else looks.\n\n"
+        "It never reads which way a tick-box or a piece of free text "
+        "actually leans — only that a flag exists, how confident the tool "
+        "is that it's a genuine inconsistency, and how important that kind "
+        "of question generally is. Two submissions with opposite-leaning "
+        "answers but the same number, strength and importance of "
+        "inconsistencies score identically — that's checked directly in "
+        "the test suite, not just claimed here."
+    )
+
+# =============================================================================
+# 4. Flags
+# =============================================================================
+st.header("4. Flags for review")
 
 # WCAG 2.2: 4.1.3 status messages. This text changes whenever the flag count
 # or method changes, and screen readers announce an aria-live region's
@@ -538,13 +633,14 @@ st.markdown(
     f'<div class="visually-hidden" role="status" aria-live="polite">'
     f"{len(result.flagged)} flag(s) found using the {result.method.replace('_', ' ')} method, "
     f"out of {result.n_instances_scored} answered question pairs checked, "
-    f"and {len(result.cross_field_findings)} tick-box consistency finding(s)."
+    f"and {len(result.cross_field_findings)} tick-box consistency finding(s). "
+    f"Review priority: {priority.label if priority else 'not available'}."
     f"</div>",
     unsafe_allow_html=True,
 )
 
 if not result.flagged:
-    # Not a `st.stop()` here: even with no tick-box-vs-text flags, section 4
+    # Not a `st.stop()` here: even with no tick-box-vs-text flags, section 5
     # below may still have a tick-box-vs-tick-box consistency finding to show,
     # and the decision log section always renders.
     st.markdown(
@@ -702,21 +798,21 @@ for test in ordered_tests:
             st.markdown("</div>", unsafe_allow_html=True)
 
 # =============================================================================
-# 4. Tick-box vs tick-box consistency findings
+# 5. Tick-box vs tick-box consistency findings
 #
-# Same idea as section 3, but comparing two structured answers against each
+# Same idea as section 4, but comparing two structured answers against each
 # other instead of an answer against its own free-text justification (see
 # src/models/cross_field.py). These have no confidence band — a boolean
 # condition either fired or it did not, so severity (authored per-check in
 # config, not computed) is shown instead.
 #
 # Decisions on these findings are recorded through the same DecisionLog /
-# ReviewDecision machinery as section 3, reusing its `pair_id` field for the
+# ReviewDecision machinery as section 4, reusing its `pair_id` field for the
 # check's id and `field_id` for the touched fields (joined), rather than
 # adding a parallel log for what is, for audit purposes, the same kind of
 # event: a reviewer looked at a flagged inconsistency and made a call on it.
 # =============================================================================
-st.header("4. " + configs["review"]["cross_field"]["section_heading"])
+st.header("5. " + configs["review"]["cross_field"]["section_heading"])
 st.caption(configs["review"]["cross_field"]["section_intro"])
 
 if not result.cross_field_findings:
@@ -812,9 +908,9 @@ else:
             st.markdown("</div>", unsafe_allow_html=True)
 
 # =============================================================================
-# 5. Decision log for this record
+# 6. Decision log for this record
 # =============================================================================
-st.header("5. Decisions recorded for this submission")
+st.header("6. Decisions recorded for this submission")
 record_decisions = decision_log.for_record(str(record.get("record_id")))
 if not record_decisions:
     st.markdown("No decisions recorded yet for this submission.")

@@ -48,6 +48,24 @@ in Phase 7 for the DPIA to re-scope: the residual re-identification risk,
 the data processed, and the human-decision posture described above are
 unchanged.
 
+**Note on the Phase 7 follow-up (review priority):** a request for a
+per-submission IR35-likelihood scale was raised and, after being put back
+to the project owner directly, built instead as an aggregate "how much
+attention does this need" summary (`src/review/review_priority.py`) — see
+the "Follow-up" section of the same report for the full reasoning. This,
+too, does not change the DPIA scope: `review_priority_for` takes only the
+already-computed flags and findings (each carrying a confidence band or
+severity and a materiality tier — never a raw field value) plus static
+config, and produces one of five plain-language labels. It is not a new
+computation over the record, does not touch personal data any more
+directly than the flags it summarises already did, and — the same
+structural-guarantee pattern as materiality — its signature has no
+parameter a record could be passed through
+(`tests/test_review_priority.py::test_function_signature_takes_no_raw_record`).
+If this project is ever extended to *replace* materiality/priority's static
+inputs with something learned from real outcome data, that would be a
+different, and DPIA-relevant, change — nothing here does that.
+
 ## 2. De-identification: validated against real text, not assumed
 
 `src/deidentify/` is a real, tested pipeline component, run on every

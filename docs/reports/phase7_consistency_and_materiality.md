@@ -9,6 +9,9 @@ be worried about falling into IR35."
 The second half of that request is the one worth being careful about, and
 this report spends most of its length on it, because the obvious way to
 build it is also the way this project has spent six phases arguing against.
+A follow-up request for a Likert-style scale, and what was built instead —
+**review priority**, a five-point "how much attention does this need"
+aggregate — is covered in "Follow-up — review priority" below.
 
 ## What was asked for, and the design question it raised
 
@@ -215,6 +218,90 @@ decision log section 3 uses.
 **267 tests pass across the whole project as of this phase**, up from 232
 at the end of Phase 5.
 
+## Follow-up — review priority, a five-point "attention" scale
+
+After this phase shipped, the project owner asked for something closer to a
+Likert scale — with labels including "in IR35" and "not in IR35" — for how
+likely each submission is to fall inside or outside IR35. Read plainly,
+this is the same request "What was asked for" above already worked through:
+a per-submission status, just relabelled as a scale instead of a single
+word. Rather than build it silently either way, the tension was put back to
+the project owner directly, alongside what building it as asked would
+actually mean (an uncalibrated scale, dressed as if it were more precise
+than a RAG light rather than less). Given four options — build the Likert
+scale as asked with heavy caveats, reframe it as an aggregate of attention
+needed, strengthen materiality instead, or clarify the request — **the
+project owner chose the reframe**: a scale that summarises how much a
+submission needs review, never how it leans.
+
+`src/review/review_priority.py` is that scale — **review priority**, five
+points from *Nothing flagged* to *Urgent review*. It is the aggregate
+counterpart to materiality: where a materiality tier describes one flag,
+review priority collapses every flag and finding on a submission into one
+number, from three inputs that are all already on the page elsewhere and
+none of which, alone or combined, encode a direction:
+
+* **how many** flags and cross-field findings there are,
+* **how strong the evidence** is for each (its confidence band, or a
+  cross-field finding's authored severity),
+* **how much that kind of mismatch typically matters** (its materiality
+  tier, when available).
+
+Scoring multiplies a band/severity weight by a materiality weight per item
+and sums across all of a submission's flags and findings
+(`config/review.yaml`: `review_priority.scoring`), then maps the total
+through configured thresholds to one of five levels. One exception:
+**any item carrying gate-tier materiality — a fact that could be
+decisive on its own — pushes the whole submission straight to *Urgent
+review*, regardless of the summed score.** This mirrors the override
+`materiality_for` already applies per-item (a gate always wins over a
+weighted-test tier) at the whole-submission level, so one determinative
+fact cannot be diluted by averaging against a pile of low-stakes ones.
+
+**Why this doesn't reopen the "no combined score" rejection below.** This
+report's own "Rejected alternatives" section, written earlier in this same
+phase, rejects "a single combined materiality × confidence score" — and
+review priority's scoring genuinely does multiply a confidence-band weight
+by a materiality weight. The distinction that keeps this consistent rather
+than reversed: what was rejected there was doing this *per flag*, replacing
+that flag's own band and materiality with one fused number presented as if
+it were a more precise probability. Review priority does the opposite —
+every flag and finding still shows its own band and its own materiality
+line unchanged, exactly as before; the multiplication happens only once,
+*across* everything on the submission, to produce a coarse, five-value,
+plainly-worded ordinal label ("how much attention"), not a score presented
+as a probability of anything. It replaces nothing; it adds one summary on
+top of information that was already there.
+
+**Why this is still not a status.** Same three-part argument as materiality,
+extended to an aggregate: count, evidence strength and importance-of-
+category do not, even multiplied and summed, encode which way an answer
+leans. A submission where every flag points towards more evidence of
+self-employment scores identically to one where every flag points the
+opposite way, given the same band, severity and materiality — checked
+directly in `tests/test_review.py::test_review_priority_does_not_encode_direction`
+by constructing two submissions with genuinely different, oppositely-leaning
+flag content and asserting equal output, not by asserting it in the abstract.
+Every configured level's wording is also scanned for lean/status language
+the same way materiality's tiers and the app's scope banner already are
+(`tests/test_review_priority.py::test_configured_levels_never_mention_a_lean_or_a_status`).
+
+**Rendered deliberately in black and white** — filled/unfilled squares next
+to the text label, never a colour, and never the confidence bands' blue/
+amber/red or anything resembling a traffic light — specifically so a
+"5 of 5 filled" reading cannot be misread as "definitely inside IR35" the
+way a red light would invite. The label and a plain-language description
+are always shown alongside the squares (WCAG 1.4.1, same "never colour
+alone" principle applied everywhere else in this app), and the banner
+carries its own explicit disclaimer sentence: *"This is a summary of the
+flags below, not a prediction of the outcome — it does not say whether the
+engagement is inside or outside IR35."*
+
+`src/review/review_priority.py` (13 tests), plus 5 more in `test_review.py`
+covering the `assess_submission` wiring and the direction-independence
+property, plus 3 UI tests. **288 tests pass across the whole project**, up
+from 267 earlier in this phase.
+
 ## Rejected alternatives
 
 **A combined per-submission status ("likely inside" / "likely outside").**
@@ -230,11 +317,16 @@ recreating by colour what was rejected by wording — a reviewer skimming
 colours alone should not be able to reconstruct anything resembling a
 status.
 
-**A single combined "materiality × confidence" score.** Considered and
-rejected immediately: multiplying an evidence-strength number by an
-importance-of-category number produces exactly the single combined figure
-this whole design avoids, and it would carry false precision on top —
-neither factor is itself a calibrated probability.
+**A single combined "materiality × confidence" score, per flag.** Considered
+and rejected immediately: multiplying an evidence-strength number by an
+importance-of-category number and using it to replace a flag's own band and
+materiality would produce exactly the single combined figure this whole
+design avoids, with false precision on top — neither factor is itself a
+calibrated probability. (A related but different idea — multiplying and
+summing *across* every flag on a submission, as one more summary alongside
+the existing bands and materiality rather than replacing them — was built
+afterwards as review priority; see "Follow-up" above for why that is not
+the same rejection reversed.)
 
 **Reusing a new, parallel decision-log table for cross-field findings.**
 Considered, rejected in favour of reusing `DecisionLog` / `ReviewDecision`

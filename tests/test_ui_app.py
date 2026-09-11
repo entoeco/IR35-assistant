@@ -163,7 +163,7 @@ def test_pasting_invalid_json_shows_an_error_not_a_crash():
 
 
 # =============================================================================
-# Phase 7: cross-field consistency section, and materiality lines on section 3.
+# Phase 7: cross-field consistency section, and materiality lines on section 4.
 # =============================================================================
 
 
@@ -187,7 +187,7 @@ def test_materiality_line_appears_on_a_flag_card():
 def test_cross_field_section_shows_no_findings_for_the_default_sample():
     """The default sample pool never trips a cross-field check (checked
     directly against src.models.cross_field before writing this test), so
-    section 4 should render its "nothing found" message rather than a card,
+    section 5 should render its "nothing found" message rather than a card,
     and the app must not crash rendering an empty section."""
     at = AppTest.from_file(APP_PATH, default_timeout=90)
     at.run()
@@ -206,7 +206,7 @@ def test_cross_field_section_shows_no_findings_for_the_default_sample():
 def test_pasted_record_with_a_cross_field_clash_shows_a_finding():
     """A minimal, hand-built record that trips x_started_but_not_applicable
     (same construction as test_cross_field_findings_appear_for_a_record_built_to_trigger_one
-    in tests/test_review.py) should reach the rendered page as a section-4
+    in tests/test_review.py) should reach the rendered page as a section-5
     card: its description, its gate-tier materiality line, and working
     accept/dismiss controls that log a decision with method "cross_field"."""
     at = AppTest.from_file(APP_PATH, default_timeout=90)
@@ -242,3 +242,68 @@ def test_pasted_record_with_a_cross_field_clash_shows_a_finding():
     assert cross_field_decisions[0]["pair_id"] == "x_started_but_not_applicable"
     assert cross_field_decisions[0]["decision"] == "accept"
     assert cross_field_decisions[0]["reviewer_id"] == "j.reviewer"
+
+
+# =============================================================================
+# Review priority section (section 3) -- the "how much attention does this
+# need" aggregate, added in response to a request for something closer to a
+# Likert scale for IR35 likelihood. Built as an aggregate of attention needed
+# instead, per the recorded decision in
+# docs/reports/phase7_consistency_and_materiality.md -- these tests check
+# that choice actually reached the page, not just the backend.
+# =============================================================================
+
+
+def test_review_priority_banner_renders_for_the_default_sample():
+    """The default sample record (index 0) is known to score "Moderate
+    review" -- verified directly against assess_submission before writing
+    this test, the same way the materiality test above pins its expectation
+    against the backend first."""
+    at = AppTest.from_file(APP_PATH, default_timeout=90)
+    at.run()
+    at.button(key="load_sample").click()
+    at.run()
+    assert not at.exception
+    assert any(
+        "How much attention does this submission need?" in h.value for h in at.header
+    )
+    assert any("Moderate review" in md.value for md in at.markdown)
+
+
+def test_review_priority_disclaimer_is_present_and_no_lean_language_appears():
+    """The banner must carry its own "not a prediction of the outcome"
+    disclaimer, and -- across every markdown block the run produced, not
+    just the banner -- none of the forbidden lean/status phrases this
+    project checks everywhere else may appear."""
+    at = AppTest.from_file(APP_PATH, default_timeout=90)
+    at.run()
+    at.button(key="load_sample").click()
+    at.run()
+    assert not at.exception
+    assert any(
+        "not a prediction of the outcome" in md.value for md in at.markdown
+    )
+    forbidden = ("is inside ir35", "is outside ir35", "likely inside", "likely outside", "we determine")
+    for md in at.markdown:
+        lowered = md.value.lower()
+        assert not any(phrase in lowered for phrase in forbidden)
+
+
+def test_review_priority_reaches_urgent_for_a_gate_touching_pasted_record():
+    """Same pasted record as test_pasted_record_with_a_cross_field_clash_shows_a_finding
+    (trips x_started_but_not_applicable, a gate-tier finding) should push the
+    whole-submission review priority to "Urgent review" -- the aggregate-level
+    escalation, rendered on the page, not just returned by review_priority_for
+    in isolation."""
+    at = AppTest.from_file(APP_PATH, default_timeout=90)
+    at.run()
+    record = {
+        "record_id": "UI-PRIORITY-URGENT",
+        "q4_01_already_started": "Yes",
+        "q4_03_substitute_sent": "Not applicable - work has not started",
+    }
+    at.tabs[1].text_area[0].set_value(json.dumps(record))
+    at.button(key="load_pasted").click()
+    at.run()
+    assert not at.exception
+    assert any("Urgent review" in md.value for md in at.markdown)

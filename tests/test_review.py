@@ -432,14 +432,15 @@ def test_cross_field_findings_appear_for_a_record_built_to_trigger_one(
 
 
 def test_materiality_modules_never_import_the_labelling_engine():
-    """The same import-level guarantee as assess.py, extended to the two new
-    modules this addition introduces."""
+    """The same import-level guarantee as assess.py, extended to the new
+    modules this addition and the follow-up (review priority) introduce."""
     import ast
 
     from src.models import cross_field as cross_field_module
     from src.review import materiality as materiality_module
+    from src.review import review_priority as review_priority_module
 
-    for module in (cross_field_module, materiality_module):
+    for module in (cross_field_module, materiality_module, review_priority_module):
         source = inspect.getsource(module)
         tree = ast.parse(source)
         imported_modules: set[str] = set()
@@ -483,3 +484,163 @@ def test_cross_field_findings_never_assert_a_determination(
         if cf.materiality:
             tier_text = (cf.materiality.label + " " + cf.materiality.explanation).lower()
             assert not any(phrase in tier_text for phrase in forbidden)
+
+
+# =============================================================================
+# Review priority, wired into assess_submission
+# =============================================================================
+
+
+def test_assess_submission_always_attaches_a_review_priority(
+    schema, deidentifier, validator, rules_detector, review_config, sample_records
+):
+    """Unlike materiality, review priority needs no ir35_weights_config --
+    it is computable from bands/severities alone, with a 1.0 materiality
+    multiplier when no tier is available (see review_priority.py)."""
+    for record in sample_records[:10]:
+        result = assess_submission(
+            record,
+            schema=schema,
+            deidentifier=deidentifier,
+            validator=validator,
+            detector=rules_detector,
+            review_config=review_config,
+        )
+        assert result.review_priority is not None
+        assert result.review_priority.key in {"none", "light", "moderate", "close", "urgent"}
+
+
+def test_review_priority_is_none_when_nothing_is_flagged(
+    schema, deidentifier, validator, rules_detector, review_config
+):
+    record = {"record_id": "TEST-PRIORITY-CLEAN"}
+    result = assess_submission(
+        record,
+        schema=schema,
+        deidentifier=deidentifier,
+        validator=validator,
+        detector=rules_detector,
+        review_config=review_config,
+    )
+    assert not result.flagged
+    assert not result.cross_field_findings
+    assert result.review_priority.key == "none"
+
+
+def test_review_priority_is_urgent_for_a_gate_touching_record(
+    schema, deidentifier, validator, rules_detector, review_config, ir35_weights_config
+):
+    """The same record used to prove the cross-field gate-tier materiality
+    test above should escalate the whole submission straight to 'urgent',
+    the aggregate-level equivalent of that per-item override."""
+    record = {
+        "record_id": "TEST-PRIORITY-URGENT",
+        "q4_01_already_started": "Yes",
+        "q4_03_substitute_sent": "Not applicable - work has not started",
+    }
+    result = assess_submission(
+        record,
+        schema=schema,
+        deidentifier=deidentifier,
+        validator=validator,
+        detector=rules_detector,
+        review_config=review_config,
+        ir35_weights_config=ir35_weights_config,
+    )
+    assert result.review_priority.key == "urgent"
+
+
+def test_review_priority_never_mentions_a_lean(
+    schema, deidentifier, validator, rules_detector, review_config, ir35_weights_config, sample_records
+):
+    """Same forbidden-phrase guard used throughout this project, applied to
+    the aggregate scale's own wording -- including every configured level,
+    not just the ones a sample happens to reach."""
+    forbidden = (
+        "is inside ir35",
+        "is outside ir35",
+        "likely inside",
+        "likely outside",
+        "probably inside",
+        "probably outside",
+        "determination is",
+        "we determine",
+    )
+    for level in review_config["review_priority"]["levels"]:
+        lowered = (level["label"] + " " + level["description"]).lower()
+        assert not any(phrase in lowered for phrase in forbidden)
+
+    for record in sample_records[:15]:
+        result = assess_submission(
+            record,
+            schema=schema,
+            deidentifier=deidentifier,
+            validator=validator,
+            detector=rules_detector,
+            review_config=review_config,
+            ir35_weights_config=ir35_weights_config,
+        )
+        lowered = (result.review_priority.label + " " + result.review_priority.description).lower()
+        assert not any(phrase in lowered for phrase in forbidden)
+
+
+def test_review_priority_does_not_encode_direction(review_config):
+    """The property review_priority.py's module docstring claims: two flags
+    whose *content* points opposite ways (one instance leaning towards
+    employment, the other away from it, different structured values and
+    different free text) but with the same evidence strength and the same
+    materiality tier score identically. review_priority_for reads only
+    ``fi.band`` and ``fi.materiality`` off each item -- this test builds
+    real, differently-leaning ``PairInstance``/``Flag`` objects to prove
+    that, rather than passing placeholders that would make the claim true
+    by construction."""
+    from src.features.dataset import PairInstance
+    from src.models.base import Flag
+    from src.review.assess import FlaggedInstance
+    from src.review.bands import ConfidenceBand
+    from src.review.materiality import MaterialityTier
+    from src.review.review_priority import review_priority_for
+
+    band = ConfidenceBand(label="Priority", min_score=0.4, rationale="testing")
+    tier = MaterialityTier(label="A major factor", explanation="testing", is_gate=False)
+
+    def make_flagged(structured_value: str, free_text: str, is_outside_leaning: bool) -> FlaggedInstance:
+        instance = PairInstance(
+            record_id="TEST-DIRECTION",
+            pair_id="p_test",
+            structured_field="q4_16_payment_basis",
+            free_text_field="q4_18_rationale",
+            ir35_test="financial_risk",
+            structured_value=structured_value,
+            free_text=free_text,
+            is_outside_leaning=is_outside_leaning,
+            label=0,
+            contradiction_type=None,
+            subtlety=None,
+            unit_key="unit-1",
+            anomaly=None,
+            archetype="test_archetype",
+            register="formal",
+            ir35_label="unknown",
+        )
+        flag = Flag(
+            record_id="TEST-DIRECTION",
+            pair_id="p_test",
+            field_id="q4_18_rationale",
+            form_ref="4.18",
+            ir35_test="financial_risk",
+            score=0.6,
+            explanation="A tick-box and its explanation seem to disagree.",
+        )
+        return FlaggedInstance(flag=flag, instance=instance, band=band, materiality=tier)
+
+    leaning_employed = [
+        make_flagged("A fixed price for the project", "We pay a fixed monthly fee regardless.", False)
+    ]
+    leaning_self_employed = [
+        make_flagged("Paid only for hours actually worked, no minimum", "They invoice us for hours logged.", True)
+    ]
+
+    priority_a = review_priority_for(leaning_employed, [], review_config)
+    priority_b = review_priority_for(leaning_self_employed, [], review_config)
+    assert priority_a == priority_b

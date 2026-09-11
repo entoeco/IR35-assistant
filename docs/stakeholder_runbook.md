@@ -39,26 +39,62 @@ must be X."
 3. The screen checks the submission for personal data and for missing
    answers first, before anything else. You'll see a short note about
    either.
-4. Below that, you'll see the flags — the tick-box/explanation pairs worth a
+4. Next you'll see a short banner — **"How much attention does this
+   submission need?"** — with a five-square meter and a label (*Nothing
+   flagged*, *Light review*, *Moderate review*, *Close review*, or *Urgent
+   review*). See "How much attention does this need?" below for what this
+   is and, just as importantly, what it deliberately is not.
+5. Below that, you'll see the flags — the tick-box/explanation pairs worth a
    look, grouped by which part of the test they relate to (substitution,
    control, financial risk, and so on), strongest evidence first.
-5. For each flag, read the question, the tick-box answer, the explanation,
+6. For each flag, read the question, the tick-box answer, the explanation,
    and the reason given. Decide: is this actually a concern, or is it fine
    once you read it properly?
-6. Click **Accept — needs follow-up** if it's a genuine inconsistency worth
+7. Click **Accept — needs follow-up** if it's a genuine inconsistency worth
    raising with the manager, or **Dismiss — not a concern** if, having read
    it, it's fine. You can add a short note either way — useful if you want
    to remind yourself later why you made the call, or want someone else who
    opens this record to see your reasoning.
-7. That's it for that flag. Move to the next one. Nothing you click here sets
+8. That's it for that flag. Move to the next one. Nothing you click here sets
    the questionnaire's outcome — that's still decided the way it always has
    been, using this tool's flags as one more thing to look at.
-8. Below the flags, there's a second section: **"Do the tick-box answers
+9. Below the flags, there's a further section: **"Do the tick-box answers
    agree with each other?"** These aren't a tick-box against its own written
    explanation — they're two tick-boxes checked against each other (for
    example, "the work has already started" and "not applicable, work hasn't
    started yet," both ticked on the same form). Same idea as the flags
    above, same accept/dismiss controls, just a different kind of clash.
+
+## "How much attention does this need?" — a summary banner, not a verdict
+
+Near the top of the screen, before the individual flags, there's a small
+banner with a meter of up to five filled squares and a label such as
+*Moderate review* or *Urgent review*. This is a summary of everything in
+the flags and consistency-checks sections below it — how many there are,
+how strong the evidence is for each, and how much that kind of question
+usually matters — squeezed into one glance for when you're working through
+a stack of submissions and want to know at a look which ones need the most
+time.
+
+**It is not a verdict on the submission, and it is not a scale from "not in
+IR35" to "in IR35."** We looked at building exactly that — a scale for how
+likely each form is to fall inside or outside IR35 — and decided against
+it, for the same reason this tool has never shown a status: nothing behind
+this screen has been checked against real HMRC outcomes, so a number that
+*looks* precise would actually be a guess wearing a lab coat. What the
+meter shows instead is squarely about *how much is here to look at*, never
+*which way it points*. Two submissions with completely opposite-looking
+answers, but the same number and strength of inconsistencies, will show
+the same meter reading — because the meter genuinely cannot tell the
+difference between them; nothing that goes into it does.
+
+A full five-square "Urgent review" reading means: at least one of the
+inconsistencies below touches a fact that case law treats as potentially
+decisive by itself, so it's worth checking that one first — not that the
+tool thinks the answer is "inside." A "Nothing flagged" reading means
+nothing here disagreed with itself — not that the engagement is outside
+IR35. Both readings are about the form's own internal consistency, not
+about the underlying question.
 
 ## "Why this matters" — a new line on some flags
 

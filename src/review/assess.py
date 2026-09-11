@@ -26,6 +26,14 @@ Two additions to that original Phase 5 pipeline, both explained in
   definitions) — never the record — so it carries the same guarantee as the
   rest of this module: nothing computed here can vary with which way a
   submission leans, because nothing here computes that at all.
+
+A third addition, explained in the same report: **review priority**
+(``src.review.review_priority``) — a five-point scale aggregating every
+flag and finding on this submission into one "how much attention does this
+need" summary. It is explicitly not a per-submission IR35 status: its
+inputs are how many flags/findings there are, how strong the evidence is
+for each, and how much that kind of mismatch typically matters — none of
+which, individually or combined, says which way anything leans.
 """
 
 from __future__ import annotations
@@ -43,6 +51,7 @@ from src.models.baseline_tfidf import TfidfBaseline
 from src.models.cross_field import CrossFieldFinding, evaluate_cross_field_checks
 from src.review.bands import ConfidenceBand, band_for_score, load_band_config
 from src.review.materiality import MaterialityTier, materiality_for
+from src.review.review_priority import ReviewPriority, review_priority_for
 
 __all__ = [
     "FlaggedInstance",
@@ -110,6 +119,10 @@ class AssessmentResult:
         n_instances_scored: Total (structured answer, justification) pairs
             considered, flagged or not — context for "how much of the form
             did this actually check".
+        review_priority: Every flag and finding above, aggregated into one
+            five-point "how much attention does this need" scale. Not a
+            status — see ``src.review.review_priority``'s module docstring
+            for why, and for what its three inputs deliberately exclude.
     """
 
     record_id: str
@@ -119,6 +132,7 @@ class AssessmentResult:
     flagged: tuple[FlaggedInstance, ...]
     n_instances_scored: int
     cross_field_findings: tuple[CrossFieldFindingWithMateriality, ...] = ()
+    review_priority: ReviewPriority | None = None
 
 
 def build_detector(
@@ -294,6 +308,8 @@ def assess_submission(
         )
         cross_field.append(CrossFieldFindingWithMateriality(finding=finding, materiality=materiality))
 
+    priority = review_priority_for(flagged, cross_field, review_config)
+
     return AssessmentResult(
         record_id=str(clean_record.get("record_id", "unknown")),
         method=detector.name,
@@ -302,4 +318,5 @@ def assess_submission(
         flagged=tuple(flagged),
         n_instances_scored=len(instances),
         cross_field_findings=tuple(cross_field),
+        review_priority=priority,
     )
