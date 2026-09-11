@@ -160,3 +160,85 @@ def test_pasting_invalid_json_shows_an_error_not_a_crash():
     at.run()
     assert not at.exception
     assert any("Could not read that as a submission" in e.value for e in at.error)
+
+
+# =============================================================================
+# Phase 7: cross-field consistency section, and materiality lines on section 3.
+# =============================================================================
+
+
+def test_materiality_line_appears_on_a_flag_card():
+    """The default sample record (index 0 of the sample pool, loaded by
+    "Load this sample") is known to produce a financial_risk flag with a
+    materiality tier attached -- verified directly against
+    src.review.assess.assess_submission before writing this test. The
+    "Why this matters" wording must reach the rendered page, not just the
+    backend result object."""
+    at = AppTest.from_file(APP_PATH, default_timeout=90)
+    at.run()
+    at.text_input[0].set_value("j.reviewer")
+    at.button(key="load_sample").click()
+    at.run()
+    assert not at.exception
+    assert any("Why this matters:" in md.value for md in at.markdown)
+    assert any("A major factor" in md.value for md in at.markdown)
+
+
+def test_cross_field_section_shows_no_findings_for_the_default_sample():
+    """The default sample pool never trips a cross-field check (checked
+    directly against src.models.cross_field before writing this test), so
+    section 4 should render its "nothing found" message rather than a card,
+    and the app must not crash rendering an empty section."""
+    at = AppTest.from_file(APP_PATH, default_timeout=90)
+    at.run()
+    at.button(key="load_sample").click()
+    at.run()
+    assert not at.exception
+    assert any(
+        "Do the tick-box answers agree with each other?" in h.value for h in at.header
+    )
+    assert any(
+        "No tick-box consistency findings for this submission." in md.value
+        for md in at.markdown
+    )
+
+
+def test_pasted_record_with_a_cross_field_clash_shows_a_finding():
+    """A minimal, hand-built record that trips x_started_but_not_applicable
+    (same construction as test_cross_field_findings_appear_for_a_record_built_to_trigger_one
+    in tests/test_review.py) should reach the rendered page as a section-4
+    card: its description, its gate-tier materiality line, and working
+    accept/dismiss controls that log a decision with method "cross_field"."""
+    at = AppTest.from_file(APP_PATH, default_timeout=90)
+    at.run()
+    at.text_input[0].set_value("j.reviewer")
+
+    record = {
+        "record_id": "UI-CROSSFIELD-0001",
+        "q4_01_already_started": "Yes",
+        "q4_03_substitute_sent": "Not applicable - work has not started",
+    }
+    at.tabs[1].text_area[0].set_value(json.dumps(record))
+    at.button(key="load_pasted").click()
+    at.run()
+    assert not at.exception
+
+    # The check's id ("x_started_but_not_applicable") is an internal config
+    # key, not reviewer-facing copy -- what must appear is its description.
+    assert any("already started" in md.value.lower() or "not applicable" in md.value.lower() for md in at.markdown)
+    # Gate materiality ("Could be decisive on its own") must reach the page.
+    assert any("Could be decisive on its own" in md.value for md in at.markdown)
+    assert any("Why this matters:" in md.value for md in at.markdown)
+
+    accept_buttons = [b for b in at.button if b.label == "Accept — needs follow-up"]
+    assert accept_buttons, "expected an accept control on the cross-field card"
+    accept_buttons[-1].click()
+    at.run()
+    assert not at.exception
+
+    decisions = _load_decisions()
+    cross_field_decisions = [d for d in decisions if d["method"] == "cross_field"]
+    assert len(cross_field_decisions) == 1
+    assert cross_field_decisions[0]["pair_id"] == "x_started_but_not_applicable"
+    assert cross_field_decisions[0]["decision"] == "accept"
+    assert cross_field_decisions[0]["reviewer_id"] == "j.reviewer"

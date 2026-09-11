@@ -27,7 +27,7 @@ cd ir35-assistant
 python3 -m venv .venv
 source .venv/bin/activate          # .venv\Scripts\activate on Windows
 pip install -r requirements.txt
-pytest                             # 232 tests, all offline, ~1 minute
+pytest                             # 267 tests, all offline, ~1 minute
 streamlit run src/ui/app.py        # the reviewer app, at http://localhost:8501
 ```
 
@@ -63,9 +63,12 @@ src/models/         Every detection method behind one shared interface.
 src/evaluate/       Metrics, splits, leakage checks, calibration, plots.
 src/review/         Phase 5: turning a raw score into a reviewer-facing band,
                     running the pipeline on one live submission, and
-                    capturing accept/dismiss decisions.
+                    capturing accept/dismiss decisions. Phase 7 added
+                    src/review/materiality.py — see below.
+src/models/cross_field.py  Phase 7: tick-box vs tick-box consistency checks
+                    (as opposed to tick-box vs its own free text).
 src/ui/app.py       The Streamlit reviewer app.
-tests/              232 tests. Run all of them with `pytest`.
+tests/              267 tests. Run all of them with `pytest`.
 ```
 
 ## Running things
@@ -141,13 +144,13 @@ The files, in the order you'd usually touch them:
 | File | Governs |
 |---|---|
 | `config/schema.yaml` | Every field on the form: id, type, PII class, IR35 test, routing. |
-| `config/contradiction_pairs.yaml` | Which (tick-box, free-text) pairs are checked, and the taxonomy of contradiction types. |
+| `config/contradiction_pairs.yaml` | Which (tick-box, free-text) pairs are checked, and the taxonomy of contradiction types. Also (Phase 7) the `cross_field_checks:` conditions — tick-box vs tick-box, as opposed to tick-box vs free text. |
 | `config/generation.yaml` | The synthetic corpus: archetypes, registers, contradiction rate, reproducibility seed. |
 | `config/ir35_weights.yaml` | The rule engine that labels the synthetic training data (never used at inference time on a real submission — see below). |
 | `config/rule_baseline.yaml` | The Phase 2 keyword/rule detector's cue lists and scoring. |
 | `config/model.yaml` | Which inference backend runs (mock / local transformer / local LLM / hosted API) and its prompts. |
 | `config/pipeline.yaml` | De-identification policy and what gets logged. |
-| `config/review.yaml` | The Phase 5 app: confidence-band cut-points and wording, decision-log policy, sample submissions offered. |
+| `config/review.yaml` | The Phase 5 app: confidence-band cut-points and wording, decision-log policy, sample submissions offered. Phase 7 added the materiality tiers and cross-field wording. |
 
 ## Scope and posture (read this before touching real data)
 
@@ -228,5 +231,9 @@ what was rejected and why — lives in `docs/`:
   invariance, and the two real bugs this phase's rigour caught.
 - `docs/reports/phase5_interface_report.md` — the reviewer app and its WCAG
   2.2 AA walkthrough.
-- `docs/reports/phase6_handover_report.md` — this phase: the install-gate
-  fix, the lockfile, and the handover materials below.
+- `docs/reports/phase6_handover_report.md` — the install-gate fix, the
+  lockfile, and the handover materials referenced below.
+- `docs/reports/phase7_consistency_and_materiality.md` — tick-box vs
+  tick-box consistency checks, and "materiality" (how much a *kind* of
+  mismatch typically matters) — including the design argument for why this
+  is not the RAG-style status this project deliberately does not build.

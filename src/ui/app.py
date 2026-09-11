@@ -18,6 +18,14 @@ that could compute one (a fact a test enforces, not just a promise this file
 keeps). See ``docs/reports/phase5_interface_report.md`` for the reasoning and
 the WCAG 2.2 AA walkthrough.
 
+Two things added after Phase 5 (``docs/reports/phase7_consistency_and_materiality.md``):
+tick-box-vs-tick-box consistency findings (section 4 below), and a
+"why this matters" line attached to every flag and finding, describing how
+much that KIND of mismatch typically matters to a determination — never
+which way this submission leans. That line comes from static config (test
+weights and gate definitions), not from anything computed about this record;
+see ``src/review/materiality.py`` for the argument in full.
+
 ACCESSIBILITY NOTES ARE INLINE, next to the code they apply to, because a
 checklist kept only in a separate document is the first thing that goes stale.
 """
@@ -143,6 +151,45 @@ st.markdown(
         margin-top: 0.5rem;
     }
     .decided-note.dismissed { border-color: #2c2c2c; color: #2c2c2c; }
+
+    /* Materiality ("why this matters") — deliberately grayscale, never the
+       band colours above. Confidence bands say how strong the EVIDENCE is
+       for a mismatch; materiality says how much that KIND of mismatch
+       typically matters. Keeping them visually distinct (and structurally
+       separate — see src/review/materiality.py) stops a reviewer reading
+       "high stakes if true" as "highly likely true". */
+    .materiality-line {
+        color: #2c2c2c;
+        border-left: 3px solid #2c2c2c;
+        padding-left: 0.6rem;
+        margin: 0.5rem 0;
+        font-size: 0.95rem;
+        background: #f7f7f5;
+    }
+    .materiality-gate {
+        font-weight: 700;
+        border-left-color: #000000;
+        border-left-width: 4px;
+    }
+
+    .cross-field-card {
+        border: 1px solid #b8b8b8;
+        border-left: 6px solid #2c2c2c;
+        border-radius: 6px;
+        padding: 0.9rem 1.1rem;
+        margin-bottom: 1rem;
+        background: #ffffff;
+    }
+    .severity-badge {
+        display: inline-block;
+        font-weight: 700;
+        padding: 0.15rem 0.6rem;
+        border-radius: 999px;
+        border: 2px solid currentColor;
+        background: #ffffff;
+        margin-bottom: 0.35rem;
+        color: #2c2c2c;
+    }
     </style>
     <a class="skip-link" href="#main-heading">Skip to main content</a>
     """,
@@ -168,6 +215,7 @@ def get_configs() -> dict[str, Any]:
         "rule_baseline": load_yaml(CONFIG_DIR / "rule_baseline.yaml"),
         "text_bank": load_yaml(CONFIG_DIR / "text_bank.yaml"),
         "pipeline": load_yaml(CONFIG_DIR / "pipeline.yaml"),
+        "ir35_weights": load_yaml(CONFIG_DIR / "ir35_weights.yaml"),
     }
 
 
@@ -310,13 +358,36 @@ with st.sidebar:
             "answer against the free-text explanation next to it and flags "
             "cases where they seem to pull in different directions, so a human "
             "reviewer can look at exactly those cases rather than the whole "
-            "form. Accepting or dismissing a flag records your judgement about "
-            "*that one inconsistency* — it does not set the questionnaire's "
-            "outcome, which stays entirely a matter for the IR35 team's usual "
-            "process.\n\n"
+            "form. It also checks tick-box answers against *each other* — "
+            "section 4 below — for places where two answers on the form don't "
+            "sit well together. Accepting or dismissing a flag or finding "
+            "records your judgement about *that one inconsistency* — it does "
+            "not set the questionnaire's outcome, which stays entirely a "
+            "matter for the IR35 team's usual process.\n\n"
             "All personal data is checked and, where necessary, replaced with "
             "placeholders before anything else happens to a submission. "
             "This build only ever runs on synthetic, made-up submissions."
+        )
+
+    with st.expander('"Why this matters" — what materiality does and does not tell you'):
+        st.markdown(
+            "Most flags and findings carry a short **\"Why this matters\"** "
+            "line. It describes how much *that kind* of test or fact "
+            "typically matters to an IR35 determination in general — for "
+            "example, that personal service and control are treated in case "
+            "law as the foundation of the question, or that a particular "
+            "answer is one of a handful of facts that can settle the "
+            "question on its own.\n\n"
+            "**It is not a prediction about this submission.** It is looked "
+            "up from two static configuration files — the test weights and "
+            "determinative-gate rules used since Phase 2 — using only *which* "
+            "test or field a flag concerns. It never reads this submission's "
+            "answers, its score, or which way anything here leans, and it "
+            "reads exactly the same whether the underlying flag turns out to "
+            "be a genuine inconsistency or a false alarm. A test enforces "
+            "that this function cannot even be passed a record — see "
+            "``src/review/materiality.py`` — so this is a structural "
+            "guarantee, not just a promise this screen keeps."
         )
 
 # =============================================================================
@@ -415,6 +486,7 @@ result: AssessmentResult = assess_submission(
     validator=validator,
     detector=detector,
     review_config=configs["review"],
+    ir35_weights_config=configs["ir35_weights"],
 )
 
 st.header("2. Before the flags: privacy and completeness checks")
@@ -465,22 +537,25 @@ st.header("3. Flags for review")
 st.markdown(
     f'<div class="visually-hidden" role="status" aria-live="polite">'
     f"{len(result.flagged)} flag(s) found using the {result.method.replace('_', ' ')} method, "
-    f"out of {result.n_instances_scored} answered question pairs checked."
+    f"out of {result.n_instances_scored} answered question pairs checked, "
+    f"and {len(result.cross_field_findings)} tick-box consistency finding(s)."
     f"</div>",
     unsafe_allow_html=True,
 )
 
 if not result.flagged:
+    # Not a `st.stop()` here: even with no tick-box-vs-text flags, section 4
+    # below may still have a tick-box-vs-tick-box consistency finding to show,
+    # and the decision log section always renders.
     st.markdown(
         "No flags at or above this method's reporting threshold. "
         f"({result.n_instances_scored} answered question pairs were checked.)"
     )
-    st.stop()
-
-st.caption(
-    f"{len(result.flagged)} of {result.n_instances_scored} answered question pairs flagged. "
-    "Shown strongest evidence first within each test."
-)
+else:
+    st.caption(
+        f"{len(result.flagged)} of {result.n_instances_scored} answered question pairs flagged. "
+        "Shown strongest evidence first within each test."
+    )
 
 section_order = list(configs["review"]["test_section_order"])
 by_test: dict[str, list] = {}
@@ -496,6 +571,25 @@ BAND_CSS_CLASS = {
     "High priority": "band-high-priority",
 }
 BAND_ICON = {"Worth a look": "●", "Priority": "▲", "High priority": "■"}
+
+
+def _render_materiality(tier: Any) -> None:
+    """Render a "why this matters" line for a materiality tier, if present.
+
+    Deliberately grayscale (see the .materiality-line / .materiality-gate
+    CSS above) so this is never mistaken for a confidence band. Says nothing
+    about this record — only how much this KIND of test or fact typically
+    matters, per config/review.yaml and config/ir35_weights.yaml.
+    """
+    if tier is None:
+        return
+    css_class = "materiality-line materiality-gate" if tier.is_gate else "materiality-line"
+    st.markdown(
+        f'<div class="{css_class}">'
+        f"<strong>Why this matters:</strong> {tier.label}. {tier.explanation}"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def _existing_decision(record_id: str, pair_id: str, field_id: str) -> dict[str, Any] | None:
@@ -535,6 +629,8 @@ for test in ordered_tests:
                     unsafe_allow_html=True,
                 )
                 st.caption(band.rationale)
+
+            _render_materiality(fi.materiality)
 
             st.markdown(f"**Question {flag.form_ref}** — {schema[instance.structured_field].label}")
             st.markdown(f"Answer given: **{instance.structured_value}**")
@@ -606,9 +702,119 @@ for test in ordered_tests:
             st.markdown("</div>", unsafe_allow_html=True)
 
 # =============================================================================
-# 4. Decision log for this record
+# 4. Tick-box vs tick-box consistency findings
+#
+# Same idea as section 3, but comparing two structured answers against each
+# other instead of an answer against its own free-text justification (see
+# src/models/cross_field.py). These have no confidence band — a boolean
+# condition either fired or it did not, so severity (authored per-check in
+# config, not computed) is shown instead.
+#
+# Decisions on these findings are recorded through the same DecisionLog /
+# ReviewDecision machinery as section 3, reusing its `pair_id` field for the
+# check's id and `field_id` for the touched fields (joined), rather than
+# adding a parallel log for what is, for audit purposes, the same kind of
+# event: a reviewer looked at a flagged inconsistency and made a call on it.
 # =============================================================================
-st.header("4. Decisions recorded for this submission")
+st.header("4. " + configs["review"]["cross_field"]["section_heading"])
+st.caption(configs["review"]["cross_field"]["section_intro"])
+
+if not result.cross_field_findings:
+    st.markdown("No tick-box consistency findings for this submission.")
+else:
+    severity_label = configs["review"]["cross_field"]["severity_label"]
+    for cf in result.cross_field_findings:
+        finding = cf.finding
+        cf_pair_id = finding.check_id
+        cf_field_id = ",".join(finding.fields)
+        cf_key = f"{record.get('record_id')}::{cf_pair_id}::{cf_field_id}::cross_field"
+        existing_cf = _existing_decision(str(record.get("record_id")), cf_pair_id, cf_field_id)
+
+        with st.container():
+            st.markdown('<div class="cross-field-card">', unsafe_allow_html=True)
+            st.markdown(
+                f'<span class="severity-badge">'
+                f"{severity_label.get(finding.severity, finding.severity)}"
+                f"</span>",
+                unsafe_allow_html=True,
+            )
+
+            _render_materiality(cf.materiality)
+
+            st.markdown(finding.description)
+            st.markdown(
+                "Fields to look at: "
+                + ", ".join(
+                    f"**{schema[fid].label}**" if fid in schema and schema[fid].label else f"`{fid}`"
+                    for fid in finding.fields
+                )
+            )
+
+            if existing_cf and cf_key not in st.session_state["reopened_flags"]:
+                decided_class = "dismissed" if existing_cf["decision"] == "dismiss" else ""
+                verb = "Accepted" if existing_cf["decision"] == "accept" else "Dismissed"
+                st.markdown(
+                    f'<div class="decided-note {decided_class}">'
+                    f"{verb} by {existing_cf['reviewer_id']} at {existing_cf['timestamp_utc']}"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+                if st.button("Change this decision", key=f"reopen_{cf_key}"):
+                    st.session_state["reopened_flags"].add(cf_key)
+                    st.rerun()
+            else:
+                reviewer_id = st.session_state["reviewer_id"].strip()
+                reason = st.text_input(
+                    "Optional note (why you accepted or dismissed this)",
+                    key=f"reason_{cf_key}",
+                    label_visibility="visible",
+                )
+                b_accept, b_dismiss = st.columns(2)
+                disabled = not reviewer_id
+                if disabled:
+                    st.caption("Enter your reviewer name in the sidebar to record a decision.")
+                with b_accept:
+                    if st.button("Accept — needs follow-up", key=f"accept_{cf_key}", disabled=disabled):
+                        decision_log.record(
+                            ReviewDecision(
+                                decision_id=uuid.uuid4().hex,
+                                record_id=str(record.get("record_id")),
+                                pair_id=cf_pair_id,
+                                field_id=cf_field_id,
+                                method="cross_field",
+                                score=1.0,
+                                band_label=severity_label.get(finding.severity, finding.severity),
+                                decision="accept",
+                                reviewer_id=reviewer_id,
+                                reason=reason or None,
+                            )
+                        )
+                        st.session_state["reopened_flags"].discard(cf_key)
+                        st.rerun()
+                with b_dismiss:
+                    if st.button("Dismiss — not a concern", key=f"dismiss_{cf_key}", disabled=disabled):
+                        decision_log.record(
+                            ReviewDecision(
+                                decision_id=uuid.uuid4().hex,
+                                record_id=str(record.get("record_id")),
+                                pair_id=cf_pair_id,
+                                field_id=cf_field_id,
+                                method="cross_field",
+                                score=1.0,
+                                band_label=severity_label.get(finding.severity, finding.severity),
+                                decision="dismiss",
+                                reviewer_id=reviewer_id,
+                                reason=reason or None,
+                            )
+                        )
+                        st.session_state["reopened_flags"].discard(cf_key)
+                        st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+# =============================================================================
+# 5. Decision log for this record
+# =============================================================================
+st.header("5. Decisions recorded for this submission")
 record_decisions = decision_log.for_record(str(record.get("record_id")))
 if not record_decisions:
     st.markdown("No decisions recorded yet for this submission.")
@@ -618,9 +824,9 @@ else:
             {
                 "when": d["timestamp_utc"],
                 "reviewer": d["reviewer_id"],
-                "pair": d["pair_id"],
+                "pair / check": d["pair_id"],
                 "decision": d["decision"],
-                "band at the time": d.get("band_label"),
+                "band / severity at the time": d.get("band_label"),
             }
             for d in record_decisions
         ],

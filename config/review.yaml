@@ -124,3 +124,72 @@ test_section_order:
   - business_on_own_account
   - mutuality_of_obligation
   - contract_basis
+
+# =============================================================================
+# MATERIALITY — "how much does this typically matter," never "which way does
+# this submission lean." See src/review/materiality.py for the safety
+# argument in full; in short, every tier here is looked up purely from an
+# IR35 test id or a field id — never from an answer, a score, or anything
+# else that could vary between submissions, so this cannot become a status by
+# another name.
+#
+# The three weight tiers and their cut-points are a direct restatement of the
+# case-law hierarchy already documented in config/ir35_weights.yaml's own
+# comments — personal service and control as the irreducible minimum,
+# financial risk next, the rest as "all the circumstances" — not a new
+# judgement invented for this file. The cut-points (0.25, 0.15) sit cleanly
+# between the actual configured weights (0.28/0.26 | 0.22 | 0.10/0.09/0.05),
+# so no test sits near a boundary.
+# =============================================================================
+materiality:
+  tiers:
+    - min_weight: 0.25
+      label: "One of the two foundational tests"
+      explanation: >-
+        Case law treats personal service and control as the essential
+        minimum for an employment relationship to exist at all. A mismatch
+        here is worth checking carefully regardless of anything else on the
+        form.
+    - min_weight: 0.15
+      label: "A major factor"
+      explanation: >-
+        Financial risk is weighted heavily in most determinations, though it
+        is not treated as part of the essential minimum alongside personal
+        service and control.
+    - min_weight: 0.0
+      label: "One of several contributing factors"
+      explanation: >-
+        Relevant to "all the circumstances" of the engagement, but not
+        normally decisive on its own.
+
+  # Applied instead of a weight tier when the specific field involved is part
+  # of a determinative gate in config/ir35_weights.yaml (office holder, an
+  # actual paid substitution, paying someone else for a significant portion
+  # of the work) — a single fact case law treats as settling the question
+  # regardless of every other answer on the form.
+  gate_label: "Could be decisive on its own"
+  gate_explanation: >-
+    This answer is one of a small number of facts that case law treats as
+    settling the question by itself, regardless of every other answer on the
+    form — so if the written explanation turns out to be closer to the truth
+    than the tick-box, that is worth flagging clearly rather than weighing
+    against everything else.
+
+# -----------------------------------------------------------------------------
+# Tick-box vs tick-box consistency checks (src/models/cross_field.py).
+# Severity is authored in contradiction_pairs.yaml per check, not computed —
+# these are exact boolean rules, not statistical scores, so there is no
+# calibration question to hedge with a band the way confidence_bands does
+# above. Wording only, here.
+# -----------------------------------------------------------------------------
+cross_field:
+  severity_label:
+    low: "Low severity"
+    medium: "Medium severity"
+    high: "High severity"
+  section_heading: "Do the tick-box answers agree with each other?"
+  section_intro: >-
+    These don't compare a tick-box against its own written explanation — they
+    compare tick-boxes against each other. Some are data-quality issues (a
+    question answered that the form's own routing should have skipped);
+    others are two answers that don't sit well together on their face.

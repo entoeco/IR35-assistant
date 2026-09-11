@@ -53,6 +53,39 @@ must be X."
 7. That's it for that flag. Move to the next one. Nothing you click here sets
    the questionnaire's outcome — that's still decided the way it always has
    been, using this tool's flags as one more thing to look at.
+8. Below the flags, there's a second section: **"Do the tick-box answers
+   agree with each other?"** These aren't a tick-box against its own written
+   explanation — they're two tick-boxes checked against each other (for
+   example, "the work has already started" and "not applicable, work hasn't
+   started yet," both ticked on the same form). Same idea as the flags
+   above, same accept/dismiss controls, just a different kind of clash.
+
+## "Why this matters" — a new line on some flags
+
+Some flags and findings now carry a short grey line underneath them, headed
+**"Why this matters."** For example:
+
+> **Why this matters:** A major factor. Financial risk is weighted heavily
+> in most determinations, though it is not treated as part of the essential
+> minimum alongside personal service and control.
+
+This tells you how much *that kind* of question typically matters to a
+determination in general — it does **not** tell you anything about this
+particular submission, and it is not a lean either way. It's the same kind
+of information as knowing "substitution and control are the two tests case
+law treats as foundational" — background you'd bring to reading any
+submission — just placed next to the relevant flag instead of something you
+have to remember. It comes from the same fixed rulebook for every
+submission; it never looks at what this particular manager wrote.
+
+It's shown in grey, on purpose, and never in the same colours as the
+Worth-a-look / Priority / High-priority bands above it — those two things
+are answering different questions (how strong is the evidence that these
+two answers disagree, versus how much would it matter if they do), and
+keeping them visually separate is meant to stop the two getting read as one
+combined score. If a "Why this matters" line ever reads like it's telling
+you the outcome rather than the topic's general importance, that's a bug —
+report it the same way as the status/nudging issue below.
 
 ## What the confidence words mean
 

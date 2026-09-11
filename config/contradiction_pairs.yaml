@@ -440,30 +440,90 @@ pairs:
     plantable_types: [direct_negation, hedged_non_support]
 
 # =============================================================================
-# CROSS-FIELD CHECKS — a second detector class, structured-vs-structured or
-# free-text-vs-many. Not (premise, hypothesis) pairs, so they are handled by a
-# rule engine rather than by the NLI model. Listed here because they are part
-# of the same "reasonable care" surface.
+# CROSS-FIELD CHECKS — a second detector class, structured-vs-structured
+# (tick-box vs tick-box) rather than structured-vs-free-text. Not (premise,
+# hypothesis) pairs, so they are handled by a small rule engine
+# (src/models/cross_field.py) rather than by the NLI model. Listed here
+# because they are part of the same "reasonable care" surface as the pairs
+# above.
+#
+# `condition` IS THE EXECUTABLE FORM of `description` — a small, deliberately
+# minimal DSL evaluated by src/models/cross_field.py, so that (per constraint
+# 5) the actual field names and values being compared live here, not in
+# Python. It is a list of clauses under `when_all`, ALL of which must hold for
+# the check to fire:
+#   - {field: <id>, eq: <value>}       field equals value exactly
+#   - {field: <id>, in: [<values>]}    field is one of these values
+#   - {any_not_empty: [<id>, <id>]}    at least one of these fields is non-blank
+#
+# Three checks below have a `condition` and are wired up and tested. Three do
+# not, on purpose, and stay documentation of a known gap rather than a
+# fabricated implementation:
+#   - x_route_substitution and x_missing_justification describe checks that
+#     src/ingest/validate.py already performs (routing and justification
+#     completeness) under different names. Duplicating that logic here in a
+#     second, differently-shaped form risks the two silently disagreeing.
+#     The reviewer app surfaces validate.py's findings directly instead — see
+#     docs/reports/phase7_consistency_and_materiality.md.
+#   - x_duties_vs_control needs to compare free text against several
+#     structured answers taken together (`method: document_level_nli`) — a
+#     genuinely different, harder detection problem than a boolean condition
+#     over tick-boxes, and not attempted here for the same reason Phase 3's
+#     transformer methods are built but not run: it deserves a real model,
+#     not a rule dressed up as one.
 # =============================================================================
 cross_field_checks:
   - id: x_route_section2
     description: "q2_01 = 'No' but company name or registration number is populated."
     severity: medium
+    condition:
+      when_all:
+        - field: q2_01_via_third_party
+          eq: "No"
+        - any_not_empty: [q2_02_company_name, q2_03_company_number]
+
   - id: x_route_substitution
     description: >-
       The 4.3 -> 4.4/4.5/4.6/4.7 routing was not followed: a question that the
       selected route skips has been answered, or a question the route requires
       has been left blank.
     severity: medium
+    # No `condition`: already checked by src/ingest/validate.py's
+    # `answered_off_route` / `missing_on_route` findings. See note above.
+
   - id: x_no_financial_risk_but_fixed_price
     description: >-
       q4_16 = 'A fixed price for the project' while q4_12, q4_13, q4_14, q4_15
       are all 'No' and q4_17 is a 'No' option — a fixed-price contractor
       carrying no risk of any kind. Not an error, but worth a reviewer's eye.
     severity: low
+    condition:
+      when_all:
+        - field: q4_16_payment_basis
+          eq: "A fixed price for the project"
+        - field: q4_12_buys_equipment
+          eq: "No"
+        - field: q4_13_vehicle_costs
+          eq: "No"
+        - field: q4_14_materials_unreimbursed
+          eq: "No"
+        - field: q4_15_other_costs
+          eq: "No"
+        - field: q4_17_put_right
+          in:
+            - "No - the work is time-specific or for a single event"
+            - "No"
+
   - id: x_started_but_not_applicable
     description: "q4_01 = 'Yes' (work started) but q4_03 = 'Not applicable - work has not started'."
     severity: high
+    condition:
+      when_all:
+        - field: q4_01_already_started
+          eq: "Yes"
+        - field: q4_03_substitute_sent
+          eq: "Not applicable - work has not started"
+
   - id: x_duties_vs_control
     description: >-
       The document-level duties narrative (q4_00_duties_narrative) describes
@@ -471,6 +531,9 @@ cross_field_checks:
       control answers taken together.
     severity: medium
     method: document_level_nli
+    # No `condition`: needs a real NLI comparison, not a boolean rule. See
+    # note above.
+
   - id: x_missing_justification
     description: >-
       A structured answer is present but its rationale box is blank or below
@@ -478,3 +541,5 @@ cross_field_checks:
       fields are completed, so this is a completeness flag rather than a
       contradiction.
     severity: high
+    # No `condition`: already checked by src/ingest/validate.py's
+    # `missing_justification` / `justification_too_short` findings.

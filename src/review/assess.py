@@ -14,6 +14,18 @@ Importing it here would make "don't show a status" a UI-layer promise rather
 than a fact about what was computed, and a promise like that does not survive
 a stakeholder asking for "just the answer". So it is simply never invoked
 from this module, and there is nothing to hide.
+
+Two additions to that original Phase 5 pipeline, both explained in
+``docs/reports/phase7_consistency_and_materiality.md``:
+
+* **Cross-field findings** (``src.models.cross_field``) — the same kind of
+  check as the tick-box-vs-text flags above, but tick-box vs tick-box.
+* **Materiality** (``src.review.materiality``) — attached to every flag and
+  finding, describing how much that *kind* of mismatch typically matters to
+  a determination. This reads only static config (test weights, gate
+  definitions) — never the record — so it carries the same guarantee as the
+  rest of this module: nothing computed here can vary with which way a
+  submission leans, because nothing here computes that at all.
 """
 
 from __future__ import annotations
@@ -28,9 +40,17 @@ from src.ingest.validate import ValidationResult, RecordValidator
 from src.models.base import ContradictionDetector, Flag
 from src.models.baseline_rules import RuleBaseline
 from src.models.baseline_tfidf import TfidfBaseline
+from src.models.cross_field import CrossFieldFinding, evaluate_cross_field_checks
 from src.review.bands import ConfidenceBand, band_for_score, load_band_config
+from src.review.materiality import MaterialityTier, materiality_for
 
-__all__ = ["FlaggedInstance", "AssessmentResult", "build_detector", "assess_submission"]
+__all__ = [
+    "FlaggedInstance",
+    "CrossFieldFindingWithMateriality",
+    "AssessmentResult",
+    "build_detector",
+    "assess_submission",
+]
 
 
 @dataclass(frozen=True)
@@ -46,11 +66,33 @@ class FlaggedInstance:
             filtered out before they reach the reviewer (see
             :func:`assess_submission`), but the field exists so a caller can
             assert on it directly.
+        materiality: How much a mismatch on this pair's IR35 test (or,
+            for a gate field, this specific fact) typically matters to a
+            determination — described from the rulebook, not computed from
+            this record. See ``src.review.materiality``.
     """
 
     flag: Flag
     instance: PairInstance
     band: ConfidenceBand | None
+    materiality: MaterialityTier | None = None
+
+
+@dataclass(frozen=True)
+class CrossFieldFindingWithMateriality:
+    """One tick-box-vs-tick-box finding, with materiality attached.
+
+    Attributes:
+        finding: The underlying :class:`~src.models.cross_field.CrossFieldFinding`.
+        materiality: Set only when every field the check touched maps
+            unambiguously to the same IR35 test — several of these checks
+            (e.g. ``x_route_section2``, about intermediary structure) are
+            data-quality flags rather than IR35-test-specific ones, and get
+            no materiality tag rather than a guessed one.
+    """
+
+    finding: CrossFieldFinding
+    materiality: MaterialityTier | None
 
 
 @dataclass(frozen=True)
@@ -76,6 +118,7 @@ class AssessmentResult:
     validation: ValidationResult
     flagged: tuple[FlaggedInstance, ...]
     n_instances_scored: int
+    cross_field_findings: tuple[CrossFieldFindingWithMateriality, ...] = ()
 
 
 def build_detector(
@@ -133,6 +176,52 @@ def build_detector(
     raise ValueError(f"unknown detector method: {method!r}")
 
 
+def _materiality_for_pair(
+    review_config: Mapping[str, Any],
+    ir35_weights_config: Mapping[str, Any],
+    instance: PairInstance,
+) -> MaterialityTier | None:
+    """Materiality for a tick-box-vs-text flag: gate first, then test weight."""
+    gate_tier = materiality_for(
+        review_config, ir35_weights_config, ir35_test=None, field_id=instance.structured_field
+    )
+    if gate_tier is not None:
+        return gate_tier
+    return materiality_for(
+        review_config, ir35_weights_config, ir35_test=instance.ir35_test
+    )
+
+
+def _materiality_for_cross_field(
+    review_config: Mapping[str, Any],
+    ir35_weights_config: Mapping[str, Any],
+    schema: Schema,
+    fields: Sequence[str],
+) -> MaterialityTier | None:
+    """Materiality for a tick-box-vs-tick-box finding.
+
+    A gate match on ANY touched field takes priority — one of the fields
+    being capable of settling the question alone is worth saying regardless
+    of what the others are. Failing that, if every touched field belongs to
+    the same IR35 test, that test's weight tier applies. If the fields span
+    more than one test (as ``x_route_section2`` does, touching a contract-basis
+    field and two ungraded metadata fields), no tier is attached rather than
+    guessing which test it "really" means.
+    """
+    for field_id in fields:
+        tier = materiality_for(review_config, ir35_weights_config, ir35_test=None, field_id=field_id)
+        if tier is not None:
+            return tier
+    tests = {
+        schema[fid].ir35_test
+        for fid in fields
+        if fid in schema and schema[fid].ir35_test
+    }
+    if len(tests) == 1:
+        return materiality_for(review_config, ir35_weights_config, ir35_test=next(iter(tests)))
+    return None
+
+
 def assess_submission(
     record: Mapping[str, Any],
     *,
@@ -141,6 +230,7 @@ def assess_submission(
     validator: RecordValidator,
     detector: ContradictionDetector,
     review_config: Mapping[str, Any],
+    ir35_weights_config: Mapping[str, Any] | None = None,
 ) -> AssessmentResult:
     """Run one raw submission through de-identify, validate, score, explain.
 
@@ -151,19 +241,30 @@ def assess_submission(
         deidentifier: Configured per constraint 3.
         validator: Configured per the data contract.
         detector: An already-fitted detector, from :func:`build_detector`.
-        review_config: Parsed ``config/review.yaml``, for band cut-points.
+        review_config: Parsed ``config/review.yaml``, for band cut-points,
+            cross-field wording, and materiality tiers.
+        ir35_weights_config: Parsed ``config/ir35_weights.yaml``, for
+            materiality's test weights and gate definitions. Optional —
+            when omitted, cross-field checks still run and flags still carry
+            bands, just with ``materiality`` left ``None`` throughout, so a
+            caller that only wants the original Phase 5 behaviour does not
+            have to load a config it does not otherwise need.
 
     Returns:
         An :class:`AssessmentResult`. ``flagged`` contains only instances that
         cleared the detector's lowest configured band — a score with no band
         is, by the config's own definition, not worth a reviewer's time and
         is dropped rather than shown as a zero-confidence curiosity.
+        ``cross_field_findings`` contains every configured, condition-bearing
+        check that fired — these have no band to clear; a boolean check
+        either fires or it does not.
     """
     clean_record, deid_report = deidentifier.deidentify(record)
     validation = validator.validate(clean_record)
 
     instances = build_instances_single(schema, clean_record)
     bands = load_band_config(review_config, detector.name)
+    weights_cfg = ir35_weights_config or {}
 
     flagged: list[FlaggedInstance] = []
     if instances:
@@ -173,9 +274,25 @@ def assess_submission(
             if band is None:
                 continue
             flag = detector.flag(instance, float(score), schema)
-            flagged.append(FlaggedInstance(flag=flag, instance=instance, band=band))
+            materiality = (
+                _materiality_for_pair(review_config, weights_cfg, instance)
+                if ir35_weights_config is not None
+                else None
+            )
+            flagged.append(
+                FlaggedInstance(flag=flag, instance=instance, band=band, materiality=materiality)
+            )
 
     flagged.sort(key=lambda fi: fi.flag.score, reverse=True)
+
+    cross_field: list[CrossFieldFindingWithMateriality] = []
+    for finding in evaluate_cross_field_checks(schema, clean_record):
+        materiality = (
+            _materiality_for_cross_field(review_config, weights_cfg, schema, finding.fields)
+            if ir35_weights_config is not None
+            else None
+        )
+        cross_field.append(CrossFieldFindingWithMateriality(finding=finding, materiality=materiality))
 
     return AssessmentResult(
         record_id=str(clean_record.get("record_id", "unknown")),
@@ -184,4 +301,5 @@ def assess_submission(
         validation=validation,
         flagged=tuple(flagged),
         n_instances_scored=len(instances),
+        cross_field_findings=tuple(cross_field),
     )

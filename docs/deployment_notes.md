@@ -34,6 +34,20 @@ Article 22 is central to this project's whole design (see the README's
 that no automated decision is made and a description of the human review
 step that makes that true in practice, not just in the code.
 
+**Note on Phase 7 (tick-box consistency checks and "materiality"):** neither
+addition changes this section's assessment. The consistency checks
+(`src/models/cross_field.py`) read the same already-in-scope tick-box
+answers the Phase 5 flags already read — no new field, and no new category
+of data, is processed. Materiality (`src/review/materiality.py`) reads only
+two static config files (`config/review.yaml`, `config/ir35_weights.yaml`)
+and never the record being reviewed at all — a fact a test asserts
+structurally, not just behaviourally, by checking the function's signature
+has no parameter a record or a score could be passed through (see
+`docs/reports/phase7_consistency_and_materiality.md`). So there is nothing
+in Phase 7 for the DPIA to re-scope: the residual re-identification risk,
+the data processed, and the human-decision posture described above are
+unchanged.
+
 ## 2. De-identification: validated against real text, not assumed
 
 `src/deidentify/` is a real, tested pipeline component, run on every

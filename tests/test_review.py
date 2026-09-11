@@ -53,6 +53,11 @@ def pipeline_config():
 
 
 @pytest.fixture(scope="module")
+def ir35_weights_config():
+    return load_yaml(CONFIG_DIR / "ir35_weights.yaml")
+
+
+@pytest.fixture(scope="module")
 def sample_records():
     import json
 
@@ -350,3 +355,131 @@ def test_assess_module_never_imports_the_labelling_engine():
 def test_assessment_result_has_no_status_field():
     fields = {f.name for f in assess_module.AssessmentResult.__dataclass_fields__.values()}
     assert not any("status" in f.lower() for f in fields)
+
+
+# =============================================================================
+# Cross-field findings and materiality, wired into assess_submission
+# =============================================================================
+
+
+def test_assess_submission_without_weights_config_leaves_materiality_none(
+    schema, deidentifier, validator, rules_detector, review_config, sample_records
+):
+    """The ir35_weights_config argument is optional -- a caller that only
+    wants original Phase 5 behaviour should not be forced to load a config
+    it never asked for."""
+    record = sample_records[0]
+    result = assess_submission(
+        record,
+        schema=schema,
+        deidentifier=deidentifier,
+        validator=validator,
+        detector=rules_detector,
+        review_config=review_config,
+    )
+    for fi in result.flagged:
+        assert fi.materiality is None
+    for cf in result.cross_field_findings:
+        assert cf.materiality is None
+
+
+def test_assess_submission_attaches_materiality_when_weights_config_given(
+    schema, deidentifier, validator, rules_detector, review_config, ir35_weights_config, sample_records
+):
+    found_any = False
+    for record in sample_records:
+        result = assess_submission(
+            record,
+            schema=schema,
+            deidentifier=deidentifier,
+            validator=validator,
+            detector=rules_detector,
+            review_config=review_config,
+            ir35_weights_config=ir35_weights_config,
+        )
+        for fi in result.flagged:
+            found_any = True
+            # Every flagged pair touches a test that is either weighted or a
+            # gate field, per the schema -- so materiality should resolve.
+            assert fi.materiality is not None
+    assert found_any, "no flags found across the sample to check materiality on"
+
+
+def test_cross_field_findings_appear_for_a_record_built_to_trigger_one(
+    schema, deidentifier, validator, rules_detector, review_config, ir35_weights_config
+):
+    record = {
+        "record_id": "TEST-CROSS-0001",
+        "q4_01_already_started": "Yes",
+        "q4_03_substitute_sent": "Not applicable - work has not started",
+    }
+    result = assess_submission(
+        record,
+        schema=schema,
+        deidentifier=deidentifier,
+        validator=validator,
+        detector=rules_detector,
+        review_config=review_config,
+        ir35_weights_config=ir35_weights_config,
+    )
+    ids = {cf.finding.check_id for cf in result.cross_field_findings}
+    assert "x_started_but_not_applicable" in ids
+    hit = next(cf for cf in result.cross_field_findings if cf.finding.check_id == "x_started_but_not_applicable")
+    # q4_03_substitute_sent is named in the substitute_actually_sent_and_paid
+    # gate, so this finding should carry the gate tier, not a test-weight one.
+    assert hit.materiality is not None
+    assert hit.materiality.is_gate
+
+
+def test_materiality_modules_never_import_the_labelling_engine():
+    """The same import-level guarantee as assess.py, extended to the two new
+    modules this addition introduces."""
+    import ast
+
+    from src.models import cross_field as cross_field_module
+    from src.review import materiality as materiality_module
+
+    for module in (cross_field_module, materiality_module):
+        source = inspect.getsource(module)
+        tree = ast.parse(source)
+        imported_modules: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported_modules.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imported_modules.add(node.module)
+        assert not any("cest_rules" in m for m in imported_modules)
+        assert not hasattr(module, "CestRuleEngine")
+
+
+def test_cross_field_findings_never_assert_a_determination(
+    schema, deidentifier, validator, rules_detector, review_config, ir35_weights_config
+):
+    record = {
+        "record_id": "TEST-CROSS-0002",
+        "q2_01_via_third_party": "No",
+        "q2_02_company_name": "Acme Consulting Ltd",
+        "q4_16_payment_basis": "A fixed price for the project",
+        "q4_12_buys_equipment": "No",
+        "q4_13_vehicle_costs": "No",
+        "q4_14_materials_unreimbursed": "No",
+        "q4_15_other_costs": "No",
+        "q4_17_put_right": "No",
+    }
+    result = assess_submission(
+        record,
+        schema=schema,
+        deidentifier=deidentifier,
+        validator=validator,
+        detector=rules_detector,
+        review_config=review_config,
+        ir35_weights_config=ir35_weights_config,
+    )
+    assert result.cross_field_findings
+    forbidden = ("is inside ir35", "is outside ir35", "determination is", "we determine")
+    for cf in result.cross_field_findings:
+        lowered = cf.finding.description.lower()
+        assert not any(phrase in lowered for phrase in forbidden)
+        if cf.materiality:
+            tier_text = (cf.materiality.label + " " + cf.materiality.explanation).lower()
+            assert not any(phrase in tier_text for phrase in forbidden)
