@@ -136,15 +136,6 @@ st.markdown(
     .band-priority { color: #7a4a00; }
     .band-high-priority { color: #8c1d18; }
 
-    .flag-card {
-        border: 1px solid #b8b8b8;
-        border-left: 6px solid #7a4a00;
-        border-radius: 6px;
-        padding: 0.9rem 1.1rem;
-        margin-bottom: 1rem;
-        background: #ffffff;
-    }
-
     .decided-note {
         border: 2px solid #146c40;
         color: #146c40;
@@ -175,14 +166,6 @@ st.markdown(
         border-left-width: 4px;
     }
 
-    .cross-field-card {
-        border: 1px solid #b8b8b8;
-        border-left: 6px solid #2c2c2c;
-        border-radius: 6px;
-        padding: 0.9rem 1.1rem;
-        margin-bottom: 1rem;
-        background: #ffffff;
-    }
     .severity-badge {
         display: inline-block;
         font-weight: 700;
@@ -201,33 +184,60 @@ st.markdown(
        of claim — so it shares materiality's grayscale palette rather than
        inventing a third colour language that could read as a traffic light
        for "inside vs outside IR35". The filled-segment count is always
-       paired with the level's text label, never colour alone (WCAG 1.4.1). */
+       paired with the level's text label, never colour alone (WCAG 1.4.1).
+       The meter is a full-width bar of five equal segments (not a row of
+       small icons) specifically so the fill level reads at a glance —
+       small disconnected squares were easy to mistake for "barely
+       anything here" regardless of how many were actually filled. */
     .priority-banner {
         border: 2px solid #2c2c2c;
         border-radius: 6px;
-        padding: 1rem 1.2rem;
+        padding: 1.1rem 1.3rem;
         margin-bottom: 1rem;
         background: #ffffff;
     }
+    .priority-label {
+        display: block;
+        font-weight: 700;
+        font-size: 1.3rem;
+        margin-bottom: 0.6rem;
+    }
     .priority-meter {
-        display: inline-flex;
-        gap: 5px;
-        margin-right: 0.75rem;
-        vertical-align: middle;
+        display: flex;
+        gap: 6px;
+        width: 100%;
+        max-width: 480px;
+        margin-bottom: 0.75rem;
     }
     .priority-segment {
-        width: 16px;
-        height: 16px;
+        flex: 1 1 0;
+        height: 24px;
         border: 2px solid #2c2c2c;
         border-radius: 3px;
-        display: inline-block;
         background: #ffffff;
     }
     .priority-segment.filled { background: #2c2c2c; }
-    .priority-label {
-        font-weight: 700;
-        font-size: 1.1rem;
-        vertical-align: middle;
+    .priority-description {
+        margin: 0 0 0.5rem 0;
+    }
+
+    /* Shared style for a short, secondary aside — a disclaimer or a note
+       about how the tool works in general, as opposed to a finding about
+       THIS submission. Deliberately smaller and greyer than ordinary body
+       text, so the two are told apart by how they look, not just what they
+       say — the same idea WCAG 1.4.1 applies to colour, applied to "which
+       text is which kind" instead. */
+    .meta-note {
+        font-size: 0.85rem;
+        color: #555555;
+        margin: 0;
+    }
+
+    /* A section boundary, once a submission is loaded — plain, high-contrast,
+       and independent of colour, so sections 2-6 read as distinct blocks
+       while scrolling instead of one continuous run of text. */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-color: #c8c8c8 !important;
     }
     </style>
     <a class="skip-link" href="#main-heading">Skip to main content</a>
@@ -528,42 +538,41 @@ result: AssessmentResult = assess_submission(
     ir35_weights_config=configs["ir35_weights"],
 )
 
-st.header("2. Before the flags: privacy and completeness checks")
+section2 = st.container(border=True)
+with section2:
+    st.header("2. Before the flags: privacy and completeness checks")
 
-col_deid, col_valid = st.columns(2)
+    col_deid, col_valid = st.columns(2)
 
-with col_deid:
-    st.subheader("Personal data check")
-    report = result.deid_report
-    if report.is_clean:
-        st.markdown(
-            "No personal data was found in the free-text answers. "
-            "(This corpus is already de-identified upstream, so that is "
-            "expected here — the check still runs on every submission, "
-            "including this one.)"
-        )
-    else:
-        st.markdown(f"**{report.total_entities} item(s) removed** before anything else ran:")
-        for kind, count in sorted(report.entity_counts.items()):
-            st.markdown(f"- {count} × {kind.replace('_', ' ')}")
-        st.caption(
-            "Only counts are shown here — never the values that were removed."
-        )
+    with col_deid:
+        st.subheader("Personal data check")
+        report = result.deid_report
+        if report.is_clean:
+            st.markdown("No personal data was found in the free-text answers.")
+        else:
+            st.markdown(f"**{report.total_entities} item(s) removed** before anything else ran:")
+            for kind, count in sorted(report.entity_counts.items()):
+                st.markdown(f"- {count} × {kind.replace('_', ' ')}")
+            st.caption("Only counts are shown here — never the values that were removed.")
 
-with col_valid:
-    st.subheader("Form completeness")
-    findings = result.validation.findings
-    if not findings:
-        st.markdown("No completeness or contract issues found.")
-    else:
-        errors = [f for f in findings if f.severity is Severity.ERROR]
-        warnings = [f for f in findings if f.severity is Severity.WARNING]
-        for f in errors:
-            st.markdown(f"**Error:** {f.message}")
-        for f in warnings[:6]:
-            st.markdown(f"**Note:** {f.message}")
-        if len(warnings) > 6:
-            st.caption(f"…and {len(warnings) - 6} more completeness notes.")
+    with col_valid:
+        st.subheader("Form completeness")
+        findings = result.validation.findings
+        if not findings:
+            st.markdown("No completeness or contract issues found.")
+        else:
+            errors = [f for f in findings if f.severity is Severity.ERROR]
+            warnings = [f for f in findings if f.severity is Severity.WARNING]
+            if errors:
+                st.markdown("**Breaks the data contract:**")
+                for f in errors:
+                    st.markdown(f"- {f.message}")
+            if warnings:
+                st.markdown("**Incomplete or off-route answers found on this submission:**")
+                for f in warnings[:6]:
+                    st.markdown(f"- {f.message}")
+                if len(warnings) > 6:
+                    st.caption(f"…and {len(warnings) - 6} more.")
 
 # =============================================================================
 # 3. Review priority — an AGGREGATE of sections 4-5 below (how many flags and
@@ -581,221 +590,221 @@ with col_valid:
 # forbidden-phrase list the same way the scope banner and materiality text
 # are (tests/test_review_priority.py::test_configured_levels_never_mention_a_lean_or_a_status).
 # =============================================================================
-st.header("3. How much attention does this submission need?")
+section3 = st.container(border=True)
+with section3:
+    st.header("3. How much attention does this submission need?")
 
-priority = result.review_priority
-PRIORITY_LEVEL_ORDER = ["none", "light", "moderate", "close", "urgent"]
-filled = PRIORITY_LEVEL_ORDER.index(priority.key) + 1 if priority is not None and priority.key in PRIORITY_LEVEL_ORDER else 0
-segments_html = "".join(
-    f'<span class="priority-segment{" filled" if i < filled else ""}" aria-hidden="true"></span>'
-    for i in range(5)
-)
-st.markdown(
-    f'<div class="priority-banner" role="note">'
-    f'<span class="priority-meter">{segments_html}</span>'
-    f'<span class="priority-label">{priority.label if priority else "Not available"}</span>'
-    f"<p>{priority.description if priority else ''}</p>"
-    f"<p><em>This is a summary of the flags below, not a prediction of the "
-    f"outcome — it does not say whether the engagement is inside or outside "
-    f"IR35, only how much of what this tool checks disagreed with itself.</em></p>"
-    f"</div>",
-    unsafe_allow_html=True,
-)
-
-with st.expander("What goes into this, and what doesn't"):
-    st.markdown(
-        "This combines three things also shown below: **how many** flags "
-        "and tick-box consistency findings there are, **how strong the "
-        "evidence** is for each (its confidence band or severity), and "
-        "**how much that kind of question typically matters** (its "
-        "materiality tier, when available). A single finding touching a "
-        "fact case law treats as potentially decisive on its own always "
-        "puts a submission at *Urgent review*, however small everything "
-        "else looks.\n\n"
-        "It never reads which way a tick-box or a piece of free text "
-        "actually leans — only that a flag exists, how confident the tool "
-        "is that it's a genuine inconsistency, and how important that kind "
-        "of question generally is. Two submissions with opposite-leaning "
-        "answers but the same number, strength and importance of "
-        "inconsistencies score identically — that's checked directly in "
-        "the test suite, not just claimed here."
+    priority = result.review_priority
+    PRIORITY_LEVEL_ORDER = ["none", "light", "moderate", "close", "urgent"]
+    filled = PRIORITY_LEVEL_ORDER.index(priority.key) + 1 if priority is not None and priority.key in PRIORITY_LEVEL_ORDER else 0
+    segments_html = "".join(
+        f'<span class="priority-segment{" filled" if i < filled else ""}" aria-hidden="true"></span>'
+        for i in range(5)
     )
-
-# =============================================================================
-# 4. Flags
-# =============================================================================
-st.header("4. Flags for review")
-
-# WCAG 2.2: 4.1.3 status messages. This text changes whenever the flag count
-# or method changes, and screen readers announce an aria-live region's
-# updated text without the user needing to navigate to it.
-st.markdown(
-    f'<div class="visually-hidden" role="status" aria-live="polite">'
-    f"{len(result.flagged)} flag(s) found using the {result.method.replace('_', ' ')} method, "
-    f"out of {result.n_instances_scored} answered question pairs checked, "
-    f"and {len(result.cross_field_findings)} tick-box consistency finding(s). "
-    f"Review priority: {priority.label if priority else 'not available'}."
-    f"</div>",
-    unsafe_allow_html=True,
-)
-
-if not result.flagged:
-    # Not a `st.stop()` here: even with no tick-box-vs-text flags, section 5
-    # below may still have a tick-box-vs-tick-box consistency finding to show,
-    # and the decision log section always renders.
     st.markdown(
-        "No flags at or above this method's reporting threshold. "
-        f"({result.n_instances_scored} answered question pairs were checked.)"
-    )
-else:
-    st.caption(
-        f"{len(result.flagged)} of {result.n_instances_scored} answered question pairs flagged. "
-        "Shown strongest evidence first within each test."
-    )
-
-section_order = list(configs["review"]["test_section_order"])
-by_test: dict[str, list] = {}
-for fi in result.flagged:
-    by_test.setdefault(fi.instance.ir35_test, []).append(fi)
-ordered_tests = [t for t in section_order if t in by_test] + [
-    t for t in by_test if t not in section_order
-]
-
-BAND_CSS_CLASS = {
-    "Worth a look": "band-worth-a-look",
-    "Priority": "band-priority",
-    "High priority": "band-high-priority",
-}
-BAND_ICON = {"Worth a look": "●", "Priority": "▲", "High priority": "■"}
-
-
-def _render_materiality(tier: Any) -> None:
-    """Render a "why this matters" line for a materiality tier, if present.
-
-    Deliberately grayscale (see the .materiality-line / .materiality-gate
-    CSS above) so this is never mistaken for a confidence band. Says nothing
-    about this record — only how much this KIND of test or fact typically
-    matters, per config/review.yaml and config/ir35_weights.yaml.
-    """
-    if tier is None:
-        return
-    css_class = "materiality-line materiality-gate" if tier.is_gate else "materiality-line"
-    st.markdown(
-        f'<div class="{css_class}">'
-        f"<strong>Why this matters:</strong> {tier.label}. {tier.explanation}"
+        f'<div class="priority-banner" role="note">'
+        f'<span class="priority-label">{priority.label if priority else "Not available"}</span>'
+        f'<span class="priority-meter">{segments_html}</span>'
+        f'<p class="priority-description">{priority.description if priority else ""}</p>'
+        f'<p class="meta-note">A summary of the flags below — not a prediction of the outcome.</p>'
         f"</div>",
         unsafe_allow_html=True,
     )
 
+    with st.expander("What goes into this, and what doesn't"):
+        st.markdown(
+            "This combines three things also shown below: **how many** flags "
+            "and tick-box consistency findings there are, **how strong the "
+            "evidence** is for each (its confidence band or severity), and "
+            "**how much that kind of question typically matters** (its "
+            "materiality tier, when available). A single finding touching a "
+            "fact case law treats as potentially decisive on its own always "
+            "puts a submission at *Urgent review*, however small everything "
+            "else looks.\n\n"
+            "It never reads which way a tick-box or a piece of free text "
+            "actually leans — only that a flag exists, how confident the tool "
+            "is that it's a genuine inconsistency, and how important that kind "
+            "of question generally is. Two submissions with opposite-leaning "
+            "answers but the same number, strength and importance of "
+            "inconsistencies score identically — that's checked directly in "
+            "the test suite, not just claimed here."
+        )
 
-def _existing_decision(record_id: str, pair_id: str, field_id: str) -> dict[str, Any] | None:
-    """The most recent decision already logged for this exact flag, if any."""
-    matches = [
-        row
-        for row in decision_log.for_record(record_id)
-        if row.get("pair_id") == pair_id and row.get("field_id") == field_id
+# =============================================================================
+# 4. Flags
+# =============================================================================
+section4 = st.container(border=True)
+with section4:
+    st.header("4. Flags for review")
+
+    # WCAG 2.2: 4.1.3 status messages. This text changes whenever the flag count
+    # or method changes, and screen readers announce an aria-live region's
+    # updated text without the user needing to navigate to it.
+    st.markdown(
+        f'<div class="visually-hidden" role="status" aria-live="polite">'
+        f"{len(result.flagged)} flag(s) found using the {result.method.replace('_', ' ')} method, "
+        f"out of {result.n_instances_scored} answered question pairs checked, "
+        f"and {len(result.cross_field_findings)} tick-box consistency finding(s). "
+        f"Review priority: {priority.label if priority else 'not available'}."
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    if not result.flagged:
+        # Not a `st.stop()` here: even with no tick-box-vs-text flags, section 5
+        # below may still have a tick-box-vs-tick-box consistency finding to show,
+        # and the decision log section always renders.
+        st.markdown(
+            "No flags at or above this method's reporting threshold. "
+            f"({result.n_instances_scored} answered question pairs were checked.)"
+        )
+    else:
+        st.caption(
+            f"{len(result.flagged)} of {result.n_instances_scored} answered question pairs flagged. "
+            "Shown strongest evidence first within each test."
+        )
+
+    section_order = list(configs["review"]["test_section_order"])
+    by_test: dict[str, list] = {}
+    for fi in result.flagged:
+        by_test.setdefault(fi.instance.ir35_test, []).append(fi)
+    ordered_tests = [t for t in section_order if t in by_test] + [
+        t for t in by_test if t not in section_order
     ]
-    return matches[-1] if matches else None
+
+    BAND_CSS_CLASS = {
+        "Worth a look": "band-worth-a-look",
+        "Priority": "band-priority",
+        "High priority": "band-high-priority",
+    }
+    BAND_ICON = {"Worth a look": "●", "Priority": "▲", "High priority": "■"}
 
 
-for test in ordered_tests:
-    test_meta = schema.ir35_tests.get(test, {})
-    st.subheader(test_meta.get("label", test.replace("_", " ").title()))
-    if test_meta.get("note"):
-        st.caption(test_meta["note"])
+    def _render_materiality(tier: Any) -> None:
+        """Render a "why this matters" line for a materiality tier, if present.
 
-    for fi in by_test[test]:
-        flag = fi.flag
-        instance = fi.instance
-        pair = schema.pairs[flag.pair_id]
-        band = fi.band
-        css_class = BAND_CSS_CLASS.get(band.label, "band-worth-a-look") if band else ""
-        icon = BAND_ICON.get(band.label, "●") if band else ""
+        Deliberately grayscale (see the .materiality-line / .materiality-gate
+        CSS above) so this is never mistaken for a confidence band. Says nothing
+        about this record — only how much this KIND of test or fact typically
+        matters, per config/review.yaml and config/ir35_weights.yaml.
+        """
+        if tier is None:
+            return
+        css_class = "materiality-line materiality-gate" if tier.is_gate else "materiality-line"
+        st.markdown(
+            f'<div class="{css_class}">'
+            f"<strong>Why this matters:</strong> {tier.label}. {tier.explanation}"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
 
-        flag_key = f"{record.get('record_id')}::{flag.pair_id}::{flag.field_id}::{result.method}"
-        existing = _existing_decision(str(record.get("record_id")), flag.pair_id, flag.field_id)
 
-        with st.container():
-            st.markdown('<div class="flag-card">', unsafe_allow_html=True)
-            if band:
-                st.markdown(
-                    f'<span class="band-badge {css_class}">'
-                    f'<span aria-hidden="true">{icon}</span> {band.label}'
-                    f"</span>",
-                    unsafe_allow_html=True,
-                )
-                st.caption(band.rationale)
+    def _existing_decision(record_id: str, pair_id: str, field_id: str) -> dict[str, Any] | None:
+        """The most recent decision already logged for this exact flag, if any."""
+        matches = [
+            row
+            for row in decision_log.for_record(record_id)
+            if row.get("pair_id") == pair_id and row.get("field_id") == field_id
+        ]
+        return matches[-1] if matches else None
 
-            _render_materiality(fi.materiality)
 
-            st.markdown(f"**Question {flag.form_ref}** — {schema[instance.structured_field].label}")
-            st.markdown(f"Answer given: **{instance.structured_value}**")
-            st.markdown(f"> {instance.free_text}")
-            st.markdown(flag.explanation)
+    for test in ordered_tests:
+        test_meta = schema.ir35_tests.get(test, {})
+        st.subheader(test_meta.get("label", test.replace("_", " ").title()))
+        if test_meta.get("note"):
+            st.caption(test_meta["note"])
 
-            with st.expander("What would count as a contradiction here?"):
-                st.markdown(pair.contradiction or "No description recorded for this pair.")
+        for fi in by_test[test]:
+            flag = fi.flag
+            instance = fi.instance
+            pair = schema.pairs[flag.pair_id]
+            band = fi.band
+            css_class = BAND_CSS_CLASS.get(band.label, "band-worth-a-look") if band else ""
+            icon = BAND_ICON.get(band.label, "●") if band else ""
 
-            if existing and flag_key not in st.session_state["reopened_flags"]:
-                decided_class = "dismissed" if existing["decision"] == "dismiss" else ""
-                verb = "Accepted" if existing["decision"] == "accept" else "Dismissed"
-                st.markdown(
-                    f'<div class="decided-note {decided_class}">'
-                    f"{verb} by {existing['reviewer_id']} at {existing['timestamp_utc']}"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-                if st.button("Change this decision", key=f"reopen_{flag_key}"):
-                    st.session_state["reopened_flags"].add(flag_key)
-                    st.rerun()
-            else:
-                reviewer_id = st.session_state["reviewer_id"].strip()
-                reason = st.text_input(
-                    "Optional note (why you accepted or dismissed this)",
-                    key=f"reason_{flag_key}",
-                    label_visibility="visible",
-                )
-                b_accept, b_dismiss = st.columns(2)
-                disabled = not reviewer_id
-                if disabled:
-                    st.caption("Enter your reviewer name in the sidebar to record a decision.")
-                with b_accept:
-                    if st.button("Accept — needs follow-up", key=f"accept_{flag_key}", disabled=disabled):
-                        decision_log.record(
-                            ReviewDecision(
-                                decision_id=uuid.uuid4().hex,
-                                record_id=str(record.get("record_id")),
-                                pair_id=flag.pair_id,
-                                field_id=flag.field_id,
-                                method=result.method,
-                                score=flag.score,
-                                band_label=band.label if band else None,
-                                decision="accept",
-                                reviewer_id=reviewer_id,
-                                reason=reason or None,
-                            )
-                        )
-                        st.session_state["reopened_flags"].discard(flag_key)
+            flag_key = f"{record.get('record_id')}::{flag.pair_id}::{flag.field_id}::{result.method}"
+            existing = _existing_decision(str(record.get("record_id")), flag.pair_id, flag.field_id)
+
+            with st.container(border=True):
+                if band:
+                    st.markdown(
+                        f'<span class="band-badge {css_class}">'
+                        f'<span aria-hidden="true">{icon}</span> {band.label}'
+                        f"</span>",
+                        unsafe_allow_html=True,
+                    )
+                    st.caption(band.rationale)
+
+                _render_materiality(fi.materiality)
+
+                st.markdown(f"**Question {flag.form_ref}** — {schema[instance.structured_field].label}")
+                st.markdown(f"Answer given: **{instance.structured_value}**")
+                st.markdown(f"> {instance.free_text}")
+                st.markdown(flag.explanation)
+
+                with st.expander("What would count as a contradiction here?"):
+                    st.markdown(pair.contradiction or "No description recorded for this pair.")
+
+                if existing and flag_key not in st.session_state["reopened_flags"]:
+                    decided_class = "dismissed" if existing["decision"] == "dismiss" else ""
+                    verb = "Accepted" if existing["decision"] == "accept" else "Dismissed"
+                    st.markdown(
+                        f'<div class="decided-note {decided_class}">'
+                        f"{verb} by {existing['reviewer_id']} at {existing['timestamp_utc']}"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                    if st.button("Change this decision", key=f"reopen_{flag_key}"):
+                        st.session_state["reopened_flags"].add(flag_key)
                         st.rerun()
-                with b_dismiss:
-                    if st.button("Dismiss — not a concern", key=f"dismiss_{flag_key}", disabled=disabled):
-                        decision_log.record(
-                            ReviewDecision(
-                                decision_id=uuid.uuid4().hex,
-                                record_id=str(record.get("record_id")),
-                                pair_id=flag.pair_id,
-                                field_id=flag.field_id,
-                                method=result.method,
-                                score=flag.score,
-                                band_label=band.label if band else None,
-                                decision="dismiss",
-                                reviewer_id=reviewer_id,
-                                reason=reason or None,
+                else:
+                    reviewer_id = st.session_state["reviewer_id"].strip()
+                    reason = st.text_input(
+                        "Optional note (why you accepted or dismissed this)",
+                        key=f"reason_{flag_key}",
+                        label_visibility="visible",
+                    )
+                    b_accept, b_dismiss = st.columns(2)
+                    disabled = not reviewer_id
+                    if disabled:
+                        st.caption("Enter your reviewer name in the sidebar to record a decision.")
+                    with b_accept:
+                        if st.button("Accept — needs follow-up", key=f"accept_{flag_key}", disabled=disabled):
+                            decision_log.record(
+                                ReviewDecision(
+                                    decision_id=uuid.uuid4().hex,
+                                    record_id=str(record.get("record_id")),
+                                    pair_id=flag.pair_id,
+                                    field_id=flag.field_id,
+                                    method=result.method,
+                                    score=flag.score,
+                                    band_label=band.label if band else None,
+                                    decision="accept",
+                                    reviewer_id=reviewer_id,
+                                    reason=reason or None,
+                                )
                             )
-                        )
-                        st.session_state["reopened_flags"].discard(flag_key)
-                        st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
+                            st.session_state["reopened_flags"].discard(flag_key)
+                            st.rerun()
+                    with b_dismiss:
+                        if st.button("Dismiss — not a concern", key=f"dismiss_{flag_key}", disabled=disabled):
+                            decision_log.record(
+                                ReviewDecision(
+                                    decision_id=uuid.uuid4().hex,
+                                    record_id=str(record.get("record_id")),
+                                    pair_id=flag.pair_id,
+                                    field_id=flag.field_id,
+                                    method=result.method,
+                                    score=flag.score,
+                                    band_label=band.label if band else None,
+                                    decision="dismiss",
+                                    reviewer_id=reviewer_id,
+                                    reason=reason or None,
+                                )
+                            )
+                            st.session_state["reopened_flags"].discard(flag_key)
+                            st.rerun()
 
 # =============================================================================
 # 5. Tick-box vs tick-box consistency findings
@@ -812,130 +821,132 @@ for test in ordered_tests:
 # adding a parallel log for what is, for audit purposes, the same kind of
 # event: a reviewer looked at a flagged inconsistency and made a call on it.
 # =============================================================================
-st.header("5. " + configs["review"]["cross_field"]["section_heading"])
-st.caption(configs["review"]["cross_field"]["section_intro"])
+section5 = st.container(border=True)
+with section5:
+    st.header("5. " + configs["review"]["cross_field"]["section_heading"])
+    st.caption(configs["review"]["cross_field"]["section_intro"])
 
-if not result.cross_field_findings:
-    st.markdown("No tick-box consistency findings for this submission.")
-else:
-    severity_label = configs["review"]["cross_field"]["severity_label"]
-    for cf in result.cross_field_findings:
-        finding = cf.finding
-        cf_pair_id = finding.check_id
-        cf_field_id = ",".join(finding.fields)
-        cf_key = f"{record.get('record_id')}::{cf_pair_id}::{cf_field_id}::cross_field"
-        existing_cf = _existing_decision(str(record.get("record_id")), cf_pair_id, cf_field_id)
+    if not result.cross_field_findings:
+        st.markdown("No tick-box consistency findings for this submission.")
+    else:
+        severity_label = configs["review"]["cross_field"]["severity_label"]
+        for cf in result.cross_field_findings:
+            finding = cf.finding
+            cf_pair_id = finding.check_id
+            cf_field_id = ",".join(finding.fields)
+            cf_key = f"{record.get('record_id')}::{cf_pair_id}::{cf_field_id}::cross_field"
+            existing_cf = _existing_decision(str(record.get("record_id")), cf_pair_id, cf_field_id)
 
-        with st.container():
-            st.markdown('<div class="cross-field-card">', unsafe_allow_html=True)
-            st.markdown(
-                f'<span class="severity-badge">'
-                f"{severity_label.get(finding.severity, finding.severity)}"
-                f"</span>",
-                unsafe_allow_html=True,
-            )
-
-            _render_materiality(cf.materiality)
-
-            st.markdown(finding.description)
-            st.markdown(
-                "Fields to look at: "
-                + ", ".join(
-                    f"**{schema[fid].label}**" if fid in schema and schema[fid].label else f"`{fid}`"
-                    for fid in finding.fields
-                )
-            )
-
-            if existing_cf and cf_key not in st.session_state["reopened_flags"]:
-                decided_class = "dismissed" if existing_cf["decision"] == "dismiss" else ""
-                verb = "Accepted" if existing_cf["decision"] == "accept" else "Dismissed"
+            with st.container(border=True):
                 st.markdown(
-                    f'<div class="decided-note {decided_class}">'
-                    f"{verb} by {existing_cf['reviewer_id']} at {existing_cf['timestamp_utc']}"
-                    f"</div>",
+                    f'<span class="severity-badge">'
+                    f"{severity_label.get(finding.severity, finding.severity)}"
+                    f"</span>",
                     unsafe_allow_html=True,
                 )
-                if st.button("Change this decision", key=f"reopen_{cf_key}"):
-                    st.session_state["reopened_flags"].add(cf_key)
-                    st.rerun()
-            else:
-                reviewer_id = st.session_state["reviewer_id"].strip()
-                reason = st.text_input(
-                    "Optional note (why you accepted or dismissed this)",
-                    key=f"reason_{cf_key}",
-                    label_visibility="visible",
+
+                _render_materiality(cf.materiality)
+
+                st.markdown(finding.description)
+                st.markdown(
+                    "Fields to look at: "
+                    + ", ".join(
+                        f"**{schema[fid].label}**" if fid in schema and schema[fid].label else f"`{fid}`"
+                        for fid in finding.fields
+                    )
                 )
-                b_accept, b_dismiss = st.columns(2)
-                disabled = not reviewer_id
-                if disabled:
-                    st.caption("Enter your reviewer name in the sidebar to record a decision.")
-                with b_accept:
-                    if st.button("Accept — needs follow-up", key=f"accept_{cf_key}", disabled=disabled):
-                        decision_log.record(
-                            ReviewDecision(
-                                decision_id=uuid.uuid4().hex,
-                                record_id=str(record.get("record_id")),
-                                pair_id=cf_pair_id,
-                                field_id=cf_field_id,
-                                method="cross_field",
-                                score=1.0,
-                                band_label=severity_label.get(finding.severity, finding.severity),
-                                decision="accept",
-                                reviewer_id=reviewer_id,
-                                reason=reason or None,
-                            )
-                        )
-                        st.session_state["reopened_flags"].discard(cf_key)
+
+                if existing_cf and cf_key not in st.session_state["reopened_flags"]:
+                    decided_class = "dismissed" if existing_cf["decision"] == "dismiss" else ""
+                    verb = "Accepted" if existing_cf["decision"] == "accept" else "Dismissed"
+                    st.markdown(
+                        f'<div class="decided-note {decided_class}">'
+                        f"{verb} by {existing_cf['reviewer_id']} at {existing_cf['timestamp_utc']}"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                    if st.button("Change this decision", key=f"reopen_{cf_key}"):
+                        st.session_state["reopened_flags"].add(cf_key)
                         st.rerun()
-                with b_dismiss:
-                    if st.button("Dismiss — not a concern", key=f"dismiss_{cf_key}", disabled=disabled):
-                        decision_log.record(
-                            ReviewDecision(
-                                decision_id=uuid.uuid4().hex,
-                                record_id=str(record.get("record_id")),
-                                pair_id=cf_pair_id,
-                                field_id=cf_field_id,
-                                method="cross_field",
-                                score=1.0,
-                                band_label=severity_label.get(finding.severity, finding.severity),
-                                decision="dismiss",
-                                reviewer_id=reviewer_id,
-                                reason=reason or None,
+                else:
+                    reviewer_id = st.session_state["reviewer_id"].strip()
+                    reason = st.text_input(
+                        "Optional note (why you accepted or dismissed this)",
+                        key=f"reason_{cf_key}",
+                        label_visibility="visible",
+                    )
+                    b_accept, b_dismiss = st.columns(2)
+                    disabled = not reviewer_id
+                    if disabled:
+                        st.caption("Enter your reviewer name in the sidebar to record a decision.")
+                    with b_accept:
+                        if st.button("Accept — needs follow-up", key=f"accept_{cf_key}", disabled=disabled):
+                            decision_log.record(
+                                ReviewDecision(
+                                    decision_id=uuid.uuid4().hex,
+                                    record_id=str(record.get("record_id")),
+                                    pair_id=cf_pair_id,
+                                    field_id=cf_field_id,
+                                    method="cross_field",
+                                    score=1.0,
+                                    band_label=severity_label.get(finding.severity, finding.severity),
+                                    decision="accept",
+                                    reviewer_id=reviewer_id,
+                                    reason=reason or None,
+                                )
                             )
-                        )
-                        st.session_state["reopened_flags"].discard(cf_key)
-                        st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
+                            st.session_state["reopened_flags"].discard(cf_key)
+                            st.rerun()
+                    with b_dismiss:
+                        if st.button("Dismiss — not a concern", key=f"dismiss_{cf_key}", disabled=disabled):
+                            decision_log.record(
+                                ReviewDecision(
+                                    decision_id=uuid.uuid4().hex,
+                                    record_id=str(record.get("record_id")),
+                                    pair_id=cf_pair_id,
+                                    field_id=cf_field_id,
+                                    method="cross_field",
+                                    score=1.0,
+                                    band_label=severity_label.get(finding.severity, finding.severity),
+                                    decision="dismiss",
+                                    reviewer_id=reviewer_id,
+                                    reason=reason or None,
+                                )
+                            )
+                            st.session_state["reopened_flags"].discard(cf_key)
+                            st.rerun()
 
 # =============================================================================
 # 6. Decision log for this record
 # =============================================================================
-st.header("6. Decisions recorded for this submission")
-record_decisions = decision_log.for_record(str(record.get("record_id")))
-if not record_decisions:
-    st.markdown("No decisions recorded yet for this submission.")
-else:
-    st.dataframe(
-        [
-            {
-                "when": d["timestamp_utc"],
-                "reviewer": d["reviewer_id"],
-                "pair / check": d["pair_id"],
-                "decision": d["decision"],
-                "band / severity at the time": d.get("band_label"),
-            }
-            for d in record_decisions
-        ],
-        width="stretch",
-        hide_index=True,
-    )
+section6 = st.container(border=True)
+with section6:
+    st.header("6. Decisions recorded for this submission")
+    record_decisions = decision_log.for_record(str(record.get("record_id")))
+    if not record_decisions:
+        st.markdown("No decisions recorded yet for this submission.")
+    else:
+        st.dataframe(
+            [
+                {
+                    "when": d["timestamp_utc"],
+                    "reviewer": d["reviewer_id"],
+                    "pair / check": d["pair_id"],
+                    "decision": d["decision"],
+                    "band / severity at the time": d.get("band_label"),
+                }
+                for d in record_decisions
+            ],
+            width="stretch",
+            hide_index=True,
+        )
 
-all_decisions = decision_log.load()
-if all_decisions:
-    st.download_button(
-        "Download the full decision log (JSON)",
-        data=json.dumps(all_decisions, indent=2).encode("utf-8"),
-        file_name="reviewer_decisions.json",
-        mime="application/json",
-        key="download_decisions",
-    )
+    all_decisions = decision_log.load()
+    if all_decisions:
+        st.download_button(
+            "Download the full decision log (JSON)",
+            data=json.dumps(all_decisions, indent=2).encode("utf-8"),
+            file_name="reviewer_decisions.json",
+            mime="application/json",
+            key="download_decisions",
+        )
