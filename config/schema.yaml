@@ -26,6 +26,41 @@
 #   are documentation and a hint for the .xlsx ingest adapter. They are NOT a
 #   stable contract — if the form is re-laid-out, update `cell` and nothing
 #   else needs to change.
+#
+# LIVE FORM MIGRATION NOTE (Nov 2026)
+#   HR moved manager data collection from the June-2026 Excel template to a
+#   Microsoft Forms form. The live form is the thing being filled in now, so
+#   new fields below reflect it. This migration was deliberately ADDITIVE:
+#     - New fields were added for questions that exist only on the live form
+#       (q1_09_umbrella_company[_details], q3_02_self_assessment_registered,
+#       q1_04_address_full). Nothing was renamed or removed.
+#     - q2_04_entity_relationship, q2_05_years_in_business,
+#       q3_01_engaged_directly and q5_02_engaging_officer are no longer asked
+#       on the live form, but are KEPT here unchanged because the committed
+#       synthetic corpus (data/synthetic/esq_synthetic_v1.jsonl) and the
+#       Phase 2-4 evaluation results were built against them, and
+#       config/generation.yaml's identity_field_map / engagement_fields and
+#       src/generate/generator.py still reference their ids by name. A real
+#       submission simply omits them; nothing in src/ingest/validate.py
+#       requires them (required_when is documentation only, never enforced
+#       in code), so this is safe. See scripts/convert_esq_msforms_xlsx_to_json.py.
+#     - q4_03_substitute_sent gained a 5th value_domain option, "No - it has
+#       not happened", because the live form merged the old "No - they have
+#       not sent a substitute" and "Not applicable - work has not started"
+#       options into one. Both old options routed to the same next question
+#       (4.5), so the merge changes no routing. Consequence: the cross-field
+#       check x_started_but_not_applicable (contradiction_pairs.yaml) keys on
+#       the literal string "Not applicable - work has not started" and can
+#       therefore no longer fire on real submissions, since the live form no
+#       longer offers that option. This is an accepted, documented loss of
+#       that one check's real-world applicability, not a bug.
+#     - A handful of other options picked up purely cosmetic wording changes
+#       on the live form (shorter 1.8 middle option; trailing periods on some
+#       4.17 options; capitalisation/apostrophe on one 4.16 option). These are
+#       normalised onto the existing canonical strings by the converter
+#       rather than edited here, because those exact strings are load-bearing
+#       keys in config/text_bank.yaml and already appear verbatim in the
+#       committed synthetic corpus.
 # =============================================================================
 
 schema_version: "0.1.0"
@@ -153,6 +188,18 @@ fields:
     cell: E23
     pii_class: direct_identifier
 
+  # Nov-2026 live form: the address is one multi-line text box rather than
+  # 4 separate line/postcode cells. Additive — q1_04_address_line1/2/3 and
+  # q1_04_postcode above are unused by real submissions but kept for the
+  # synthetic generator / historical corpus.
+  - id: q1_04_address_full
+    form_ref: "1.4"
+    section: "1. Worker Details"
+    label: "Registered Address (full, as a single multi-line field)"
+    type: metadata
+    pii_class: direct_identifier
+    note: "Live-form-only field. Added Nov 2026 for the Microsoft Forms address box."
+
   - id: q1_05_telephone
     form_ref: "1.5"
     section: "1. Worker Details"
@@ -215,6 +262,35 @@ fields:
     ir35_test: contract_basis
     pii_class: none
 
+  # Live-form-only fields, added Nov 2026 — not on the June-2026 template.
+  # Ids keep the "q1_09" prefix (not "q1_07") even though the live form's own
+  # slot number is "1.7", to avoid colliding with the already-used
+  # q1_07_engagement_from/to ids — form_ref is provenance only, see the note
+  # at the top of this file.
+  - id: q1_09_umbrella_company
+    form_ref: "1.7 (live form)"
+    section: "1. Worker Details"
+    label: "Is the worker providing their services through an Umbrella Company?"
+    type: structured
+    ir35_test: contract_basis
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    note: "Live-form-only field. Added Nov 2026."
+  - id: q1_09_umbrella_company_details
+    form_ref: "1.7a (live form)"
+    section: "1. Worker Details"
+    label: "Please give details of the Umbrella Company arrangement."
+    type: free_text
+    justification_for: q1_09_umbrella_company
+    ir35_test: contract_basis
+    pii_class: none
+    note: >-
+      Live-form-only field. Added Nov 2026. Structurally analogous to the
+      1.8/1.8a contract pair, but NOT added to contradiction_pairs.yaml in
+      this pass — a new contradiction pair deserves its own deliberate
+      design pass (polarity, cues, generator support), flagged as a
+      follow-on recommendation rather than bolted on here.
+
   # --- Section 2: Company status -------------------------------------------
   - id: q2_01_via_third_party
     form_ref: "2.1"
@@ -249,6 +325,9 @@ fields:
     pii_class: sensitive_commercial
     required_when: "q2_01_via_third_party == 'Yes'"
 
+  # Not asked on the live (Nov-2026) form. Kept for the synthetic generator
+  # and historical corpus — see the LIVE FORM MIGRATION NOTE at the top of
+  # this file. Real submissions simply omit this field.
   - id: q2_04_entity_relationship
     form_ref: "2.4"
     section: "2. Company Status"
@@ -260,6 +339,9 @@ fields:
     pii_class: none
     required_when: "q2_01_via_third_party == 'Yes'"
 
+  # Not asked on the live (Nov-2026) form. Kept for the synthetic generator
+  # and historical corpus — see the LIVE FORM MIGRATION NOTE at the top of
+  # this file. Real submissions simply omit this field.
   - id: q2_05_years_in_business
     form_ref: "2.5"
     section: "2. Company Status"
@@ -273,6 +355,9 @@ fields:
     note: "No data validation on the template — accepts free text. Treated as semi-structured."
 
   # --- Section 3: Worker status --------------------------------------------
+  # Not asked on the live (Nov-2026) form. Kept for the synthetic generator
+  # and historical corpus — see the LIVE FORM MIGRATION NOTE at the top of
+  # this file. Real submissions simply omit this field.
   - id: q3_01_engaged_directly
     form_ref: "3.1"
     section: "3. Worker Status"
@@ -285,6 +370,19 @@ fields:
     pii_class: none
     value_domain: ["Yes", "No"]
     required_when: "q2_01_via_third_party == 'No'"
+
+  # Live-form-only field, added Nov 2026. Form slot "3.1" on the live form —
+  # a DIFFERENT question from the id above despite the coincidental slot
+  # number; given its own id so it never collides with q3_01_engaged_directly.
+  - id: q3_02_self_assessment_registered
+    form_ref: "3.1 (live form)"
+    section: "3. Worker Status"
+    label: "Is the individual registered for Self Assessment with HMRC?"
+    type: structured
+    ir35_test: business_on_own_account
+    pii_class: none
+    value_domain: ["Yes", "No"]
+    note: "Live-form-only field. Added Nov 2026."
 
   # --- Section 4 preamble ---------------------------------------------------
   - id: q4_00_role_title
@@ -363,11 +461,19 @@ fields:
       - "Yes - you did not accept them"
       - "No - they have not sent a substitute"
       - "Not applicable - work has not started"
+      # Live form (Nov 2026) merged the two "No" options above into this one.
+      # Both merged options routed to q4_05_right_to_reject, so the merge
+      # changes no routing — but it does mean x_started_but_not_applicable
+      # (contradiction_pairs.yaml), which keys on the literal string
+      # "Not applicable - work has not started", can no longer fire on real
+      # submissions. See the LIVE FORM MIGRATION NOTE at the top of this file.
+      - "No - it has not happened"
     routing:
       "Yes - you accepted them": q4_04_worker_pays_substitute
       "Yes - you did not accept them": q4_06_paid_another_person
       "No - they have not sent a substitute": q4_05_right_to_reject
       "Not applicable - work has not started": q4_05_right_to_reject
+      "No - it has not happened": q4_05_right_to_reject
   - id: q4_03_rationale
     form_ref: "4.3r"
     label: "Please explain the reason/rationale for your answer in 4.3"
@@ -972,6 +1078,9 @@ fields:
     cell: G293
     pii_class: quasi_identifier
     note: "Retained (hashed) as a cohort variable for the Phase 4 disparity analysis."
+  # Not asked on the live (Nov-2026) form. Kept for the synthetic generator
+  # and historical corpus — see the LIVE FORM MIGRATION NOTE at the top of
+  # this file. Real submissions simply omit this field.
   - id: q5_02_engaging_officer
     form_ref: "5.2"
     section: "5. Declaration"
