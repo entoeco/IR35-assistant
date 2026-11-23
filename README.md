@@ -94,6 +94,25 @@ example" button to get a valid starting point). See
 `docs/reports/phase5_interface_report.md` for what it does and why it shows
 a confidence *band* rather than a percentage.
 
+**Converting a real submission to JSON.** The reviewer app's "paste
+submission" and "upload a file" tabs expect the schema-field-id-keyed JSON
+shape documented in `config/schema.yaml`, not a raw form export. Two
+converters produce it, one per source form:
+
+```bash
+# A completed June-2026 Excel template (one workbook per submission)
+python scripts/convert_esq_xlsx_to_json.py path/to/completed_esq.xlsx
+
+# A Microsoft Forms export (live form since Nov 2026; one row per response,
+# a single export can hold many)
+python scripts/convert_esq_msforms_xlsx_to_json.py path/to/export.xlsx
+```
+
+Both validate the result against the real data contract and print any
+findings. See the "LIVE FORM MIGRATION NOTE" at the top of `config/
+schema.yaml` and `docs/reports/phase8_msforms_migration.md` for what changed
+between the two forms and how the second converter handles it.
+
 **Regenerating the synthetic corpus.** Not required — the committed corpus
 already reflects the current config — but useful after editing
 `config/generation.yaml`:
