@@ -35,6 +35,7 @@ checklist kept only in a separate document is the first thing that goes stale.
 
 from __future__ import annotations
 
+import io
 import json
 import sys
 import uuid
@@ -50,6 +51,14 @@ import streamlit as st
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+# scripts/ is not a package (no __init__.py) and isn't installed anywhere --
+# it only exists on disk in this repo -- so it needs its own path entry
+# alongside the repo root above.
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+import convert_esq_msforms_xlsx_to_json as msforms_convert  # noqa: E402
 
 from src.deidentify.deidentifier import Deidentifier
 from src.features.dataset import build_instances, load_corpus
@@ -265,6 +274,7 @@ def get_configs() -> dict[str, Any]:
         "text_bank": load_yaml(CONFIG_DIR / "text_bank.yaml"),
         "pipeline": load_yaml(CONFIG_DIR / "pipeline.yaml"),
         "ir35_weights": load_yaml(CONFIG_DIR / "ir35_weights.yaml"),
+        "generation": load_yaml(CONFIG_DIR / "generation.yaml"),
     }
 
 
@@ -505,8 +515,79 @@ with tab_paste:
             st.error(f"Could not read that as a submission: {exc}")
 
 with tab_upload:
-    uploaded = st.file_uploader("Submission file (.json)", type=["json"], key="uploaded_file")
-    if uploaded is not None and st.button("Load uploaded submission", key="load_uploaded"):
+    st.caption(
+        "Upload a single submission as JSON, or a Microsoft Forms export "
+        "(.xlsx) straight off the live ESQ form — if the export holds more "
+        "than one response, you'll be asked which one to load."
+    )
+    uploaded = st.file_uploader(
+        "Submission (.json) or Microsoft Forms export (.xlsx)",
+        type=["json", "xlsx"],
+        key="uploaded_file",
+    )
+
+    if uploaded is not None and uploaded.name.lower().endswith(".xlsx"):
+        converted = []
+        parsed_ok = False
+        try:
+            converted = msforms_convert.convert_all(
+                io.BytesIO(uploaded.getvalue()), fallback_name=Path(uploaded.name).stem
+            )
+            parsed_ok = True
+        except Exception as exc:  # openpyxl/zip errors on a malformed upload vary widely
+            st.error(f"Could not read that file as a Microsoft Forms export: {exc}")
+
+        if converted:
+            # Field ids come from config, not a literal here, per constraint 5
+            # (nothing in src/ hardcodes a schema field id).
+            identity_fields = configs["generation"].get("identity_field_map", {})
+            name_fields = [
+                identity_fields[k] for k in ("first_name", "surname") if identity_fields.get(k)
+            ]
+
+            def _label(i: int) -> str:
+                record, _ = converted[i]
+                who = " ".join(str(record[f]) for f in name_fields if record.get(f))
+                result = validator.validate(record)
+                if result.errors:
+                    status = f"{len(result.errors)} error(s)"
+                elif result.findings:
+                    status = f"{len(result.findings)} finding(s)"
+                else:
+                    status = "no findings"
+                bits = [record["record_id"]]
+                if who:
+                    bits.append(who)
+                bits.append(status)
+                return "  ·  ".join(bits)
+
+            if len(converted) == 1:
+                choice = 0
+                st.caption(f"One response found in this export — {_label(0)}.")
+            else:
+                choice = st.selectbox(
+                    f"{len(converted)} responses found in this export — which one do you want to review?",
+                    options=range(len(converted)),
+                    format_func=_label,
+                    key="uploaded_msforms_choice",
+                )
+
+            if st.button("Load this response", key="load_msforms_response"):
+                record, notes = converted[choice]
+                st.session_state["current_record"] = record
+                st.session_state["record_source_label"] = (
+                    f"Microsoft Forms response {record['record_id']} from {uploaded.name}"
+                )
+                if notes:
+                    st.info(
+                        "Wording was normalised to match the declared options for "
+                        + "; ".join(notes)
+                    )
+        elif parsed_ok:
+            # The file parsed fine but held no response rows (e.g. an export
+            # of a form with no submissions yet).
+            st.warning("No responses were found in that export.")
+    elif uploaded is not None and st.button("Load uploaded submission", key="load_uploaded"):
         try:
             record = json.loads(uploaded.getvalue().decode("utf-8"))
             if not isinstance(record, dict):
