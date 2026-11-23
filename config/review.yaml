@@ -226,6 +226,13 @@ cross_field:
 # there.
 # =============================================================================
 review_priority:
+  # How many items the app's "Top things to look at first" panel shows,
+  # ranked by src.review.review_priority.rank_by_impact. A reviewer-facing
+  # UI knob, not a field id, so it lives in config for the same reason every
+  # other UI-tunable number in this file does rather than being a literal in
+  # src/ui/app.py.
+  top_drivers_shown: 5
+
   levels:
     - key: none
       label: "Nothing flagged"
