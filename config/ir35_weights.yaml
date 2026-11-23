@@ -99,6 +99,7 @@ value_scores:
     "Yes - you did not accept them": -1.0     # a rejected substitute shows a veto
     "No - they have not sent a substitute": 0.0
     "Not applicable - work has not started": 0.0
+    "No - it has not happened": 0.0   # live-form (Nov 2026) merge of the two rows above
   q4_04_worker_pays_substitute:
     "Yes": 2.0
     "No": -1.0
