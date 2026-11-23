@@ -223,6 +223,16 @@ pairs:
         - "the same person has attended throughout; no substitution has arisen"
       "Not applicable - work has not started":
         - "engagement has not begun, so the question does not yet arise"
+      "No - it has not happened":
+        # Live form (Nov 2026) merged the two "No" options above into this
+        # single one. Never sampled by the synthetic generator (it is not a
+        # weighted option in config/generation.yaml) — this entry exists so
+        # a real submission using this answer has a grounded phrase bank
+        # should it ever go through the corpus-building path, and so the
+        # text-bank coverage test passes for every schema.yaml value_domain
+        # entry.
+        - "the same person has attended throughout; no substitution has arisen"
+        - "engagement has not begun, so the question does not yet arise"
     contradicting:
       "No - they have not sent a substitute":
         - {type: direct_negation, subtlety: 1, text: "one of their team covered the {deliverable} sessions in July when they were away"}
