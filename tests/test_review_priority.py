@@ -21,7 +21,7 @@ from src.models.cross_field import CrossFieldFinding
 from src.review.assess import CrossFieldFindingWithMateriality, FlaggedInstance
 from src.review.bands import ConfidenceBand
 from src.review.materiality import MaterialityTier
-from src.review.review_priority import review_priority_for
+from src.review.review_priority import RankedItem, rank_by_impact, review_priority_for
 
 
 @pytest.fixture(scope="module")
@@ -148,3 +148,62 @@ def test_unknown_band_or_severity_label_does_not_crash(review_config):
     band label silently breaking the aggregate instead of just under-scoring."""
     priority = review_priority_for([_flag("Some New Band", CONTRIBUTING)], [], review_config)
     assert priority.key in {"none", "light", "moderate", "close", "urgent"}
+
+
+# =============================================================================
+# rank_by_impact -- the per-item view behind the app's "Top things to look at
+# first" panel. These check it orders items by the exact same numbers
+# review_priority_for sums (no second notion of importance), never crashes
+# on the inputs review_priority_for already handles, and carries the same
+# "no raw record" structural guarantee.
+# =============================================================================
+
+def test_rank_by_impact_orders_strongest_evidence_first(review_config):
+    weak = _flag("Worth a look", CONTRIBUTING)
+    strong = _flag("High priority", FOUNDATIONAL)
+    ranked = rank_by_impact([weak, strong], [], review_config)
+    assert [r.flag for r in ranked] == [strong, weak]
+    assert ranked[0].impact_score > ranked[1].impact_score
+
+
+def test_rank_by_impact_puts_a_gate_item_first_regardless_of_score(review_config):
+    gate = _flag("Worth a look", GATE)
+    strong_non_gate = _flag("High priority", FOUNDATIONAL)
+    ranked = rank_by_impact([strong_non_gate, gate], [], review_config)
+    assert ranked[0].flag is gate
+    assert ranked[0].is_gate is True
+    assert ranked[0].impact_score == float("inf")
+
+
+def test_rank_by_impact_merges_flags_and_cross_field_findings_into_one_order(review_config):
+    flag = _flag("Priority", CONTRIBUTING)
+    finding = _finding("high", FOUNDATIONAL)
+    ranked = rank_by_impact([flag], [finding], review_config)
+    assert {r.kind for r in ranked} == {"flag", "cross_field"}
+    assert ranked[0].kind == "cross_field"  # high severity x foundational outranks Priority x contributing
+
+
+def test_rank_by_impact_respects_limit(review_config):
+    flags = [_flag("Worth a look", CONTRIBUTING) for _ in range(4)]
+    ranked = rank_by_impact(flags, [], review_config, limit=2)
+    assert len(ranked) == 2
+
+
+def test_rank_by_impact_on_nothing_returns_nothing(review_config):
+    assert rank_by_impact([], [], review_config) == []
+
+
+def test_rank_by_impact_each_item_identifies_only_its_own_kind(review_config):
+    flag = _flag("Worth a look", CONTRIBUTING)
+    finding = _finding("low", CONTRIBUTING)
+    ranked = rank_by_impact([flag], [finding], review_config)
+    by_kind = {r.kind: r for r in ranked}
+    assert by_kind["flag"].flag is flag and by_kind["flag"].cross_field is None
+    assert by_kind["cross_field"].cross_field is finding and by_kind["cross_field"].flag is None
+
+
+def test_rank_by_impact_function_signature_takes_no_raw_record():
+    """Same structural guarantee as review_priority_for: nothing here could
+    even be mistakenly passed a raw record or a computed status."""
+    params = set(inspect.signature(rank_by_impact).parameters)
+    assert params == {"flagged", "cross_field_findings", "review_config", "limit"}
