@@ -19,15 +19,23 @@ keeps). See ``docs/reports/phase5_interface_report.md`` for the reasoning and
 the WCAG 2.2 AA walkthrough.
 
 Three things added after Phase 5 (``docs/reports/phase7_consistency_and_materiality.md``):
-tick-box-vs-tick-box consistency findings (section 5 below), a "why this
+tick-box-vs-tick-box consistency findings (section 4 below), a "why this
 matters" line attached to every flag and finding, describing how much that
 KIND of mismatch typically matters to a determination — never which way
 this submission leans (``src/review/materiality.py`` has the argument in
-full) — and a five-point "review priority" summary (section 3) aggregating
+full) — and a five-point "review priority" summary (section 2) aggregating
 every flag and finding into "how much attention does this need". Review
 priority is emphatically NOT a Likert scale for "how likely is this inside
 or outside IR35" — that was considered and rejected for the same reasons the
 original RAG-status idea was; see ``src/review/review_priority.py``.
+
+Phase 9 (``docs/reports/phase9_reviewer_app_revamp.md``) merged the privacy/
+completeness checks and review priority into one "Review summary" section,
+added a "Top things to look at first" panel there that ranks flags and
+findings by how much they drove that priority — a navigation aid, computed
+from numbers already shown elsewhere, not a new kind of claim — and
+collapses the privacy/completeness checks by default when they found
+nothing, so a reviewer's eye goes straight to what needs attention.
 
 ACCESSIBILITY NOTES ARE INLINE, next to the code they apply to, because a
 checklist kept only in a separate document is the first thing that goes stale.
@@ -37,6 +45,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -68,6 +77,7 @@ from src.models.base import ContradictionDetector
 from src.review.assess import AssessmentResult, assess_submission, build_detector
 from src.review.bands import load_band_config
 from src.review.decision_log import DecisionLog, ReviewDecision
+from src.review.review_priority import rank_by_impact
 
 DATA_DIR = REPO_ROOT / "data" / "synthetic"
 
@@ -188,7 +198,7 @@ st.markdown(
 
     /* Review priority — deliberately a black/white "filled segments" meter,
        never the band colours or a red/green scale. This is an AGGREGATE
-       of what sections 4-5 already show (how many flags, how strong the
+       of what sections 3-4 already show (how many flags, how strong the
        evidence, how much it typically matters) — not a new, different kind
        of claim — so it shares materiality's grayscale palette rather than
        inventing a third colour language that could read as a traffic light
@@ -229,6 +239,37 @@ st.markdown(
     .priority-description {
         margin: 0 0 0.5rem 0;
     }
+
+    /* "Top things to look at first" -- each item is a single link (its own
+       accessible name, not a generic "jump to" repeated N times) styled as a
+       card so it reads as clickable without relying on link colour alone
+       (WCAG 1.4.1): an underline plus a border, exactly the "colour is never
+       the only signal" rule applied to a link instead of a badge. Grayscale,
+       same reasoning as .materiality-line -- this panel is a navigation aid
+       over already-shown information, not a new kind of claim. */
+    a.impact-item {
+        display: block;
+        border: 2px solid #2c2c2c;
+        border-radius: 4px;
+        padding: 0.6rem 0.9rem;
+        margin-bottom: 0.5rem;
+        color: #2c2c2c;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+    a.impact-item:hover, a.impact-item:focus-visible {
+        background: #f0f0ee;
+    }
+    .impact-badge {
+        display: inline-block;
+        font-weight: 700;
+        border: 2px solid currentColor;
+        border-radius: 999px;
+        padding: 0.05rem 0.55rem;
+        margin-right: 0.5rem;
+        font-size: 0.85rem;
+    }
+    .impact-text { text-decoration: none; }
 
     /* Shared style for a short, secondary aside — a disclaimer or a note
        about how the tool works in general, as opposed to a finding about
@@ -349,6 +390,27 @@ def get_detector(method: str, _schema: Schema, configs: dict[str, Any], corpus_k
 
 
 # =============================================================================
+# Stable identifiers for one flag or cross-field finding, shared between the
+# "Top things to look at first" panel and the full detail cards further down
+# so a link from one lands exactly on the other -- computed once, here, so
+# the two places can never drift into building the key differently.
+# =============================================================================
+def _flag_key(record_id: str, flag: Any, method: str) -> str:
+    return f"{record_id}::{flag.pair_id}::{flag.field_id}::{method}"
+
+
+def _cf_key(record_id: str, finding: Any) -> str:
+    return f"{record_id}::{finding.check_id}::{','.join(finding.fields)}::cross_field"
+
+
+def _anchor_id(key: str) -> str:
+    """An HTML-id-safe anchor built from a flag/finding key, so the browser's
+    native same-page `#anchor` navigation (no JavaScript) can jump a reviewer
+    from the top panel straight to a card further down the page."""
+    return "item-" + re.sub(r"[^a-zA-Z0-9_-]", "-", key)
+
+
+# =============================================================================
 # Session state
 # =============================================================================
 st.session_state.setdefault("reviewer_id", "")
@@ -418,7 +480,7 @@ with st.sidebar:
             "cases where they seem to pull in different directions, so a human "
             "reviewer can look at exactly those cases rather than the whole "
             "form. It also checks tick-box answers against *each other* — "
-            "section 5 below — for places where two answers on the form don't "
+            "section 4 below — for places where two answers on the form don't "
             "sit well together. Accepting or dismissing a flag or finding "
             "records your judgement about *that one inconsistency* — it does "
             "not set the questionnaire's outcome, which stays entirely a "
@@ -619,48 +681,18 @@ result: AssessmentResult = assess_submission(
     ir35_weights_config=configs["ir35_weights"],
 )
 
-section2 = st.container(border=True)
-with section2:
-    st.header("2. Before the flags: privacy and completeness checks")
-
-    col_deid, col_valid = st.columns(2)
-
-    with col_deid:
-        st.subheader("Personal data check")
-        report = result.deid_report
-        if report.is_clean:
-            st.markdown("No personal data was found in the free-text answers.")
-        else:
-            st.markdown(f"**{report.total_entities} item(s) removed** before anything else ran:")
-            for kind, count in sorted(report.entity_counts.items()):
-                st.markdown(f"- {count} × {kind.replace('_', ' ')}")
-            st.caption("Only counts are shown here — never the values that were removed.")
-
-    with col_valid:
-        st.subheader("Form completeness")
-        findings = result.validation.findings
-        if not findings:
-            st.markdown("No completeness or contract issues found.")
-        else:
-            errors = [f for f in findings if f.severity is Severity.ERROR]
-            warnings = [f for f in findings if f.severity is Severity.WARNING]
-            if errors:
-                st.markdown("**Breaks the data contract:**")
-                for f in errors:
-                    st.markdown(f"- {f.message}")
-            if warnings:
-                st.markdown("**Incomplete or off-route answers found on this submission:**")
-                for f in warnings[:6]:
-                    st.markdown(f"- {f.message}")
-                if len(warnings) > 6:
-                    st.caption(f"…and {len(warnings) - 6} more.")
+record_id = str(record.get("record_id", "unknown"))
+severity_label = configs["review"]["cross_field"]["severity_label"]
 
 # =============================================================================
-# 3. Review priority — an AGGREGATE of sections 4-5 below (how many flags and
-# findings, how strong the evidence for each, how much that kind of mismatch
-# typically matters), collapsed into one five-point scale so a reviewer
-# triaging many submissions can tell "needs a close look" from "nothing much
-# here" at a glance.
+# 2. Review summary — merges what used to be three separate sections (privacy/
+# completeness, review priority, and nothing naming the individual drivers)
+# into one place a reviewer reads top-to-bottom once per submission: the
+# headline priority, THEN the specific questions behind it, with the routine
+# privacy/completeness checks tucked away unless they actually found
+# something. Nothing below is new information — see sections 3-4 for the
+# full detail every item here links to — this is a reading order, not a new
+# kind of claim.
 #
 # THIS IS NOT A STATUS. Its own config comments (config/review.yaml) and
 # module docstring (src/review/review_priority.py) both say so, and this is
@@ -670,10 +702,13 @@ with section2:
 # "how likely inside/outside", and the wording is checked against a
 # forbidden-phrase list the same way the scope banner and materiality text
 # are (tests/test_review_priority.py::test_configured_levels_never_mention_a_lean_or_a_status).
+# The "Top things to look at first" panel below ranks by the exact same
+# per-item numbers that priority score is built from (rank_by_impact) — it
+# is a navigation aid over the sections below, not a second scoring system.
 # =============================================================================
-section3 = st.container(border=True)
-with section3:
-    st.header("3. How much attention does this submission need?")
+section2 = st.container(border=True)
+with section2:
+    st.header("2. Review summary")
 
     priority = result.review_priority
     PRIORITY_LEVEL_ORDER = ["none", "light", "moderate", "close", "urgent"]
@@ -711,12 +746,95 @@ with section3:
             "the test suite, not just claimed here."
         )
 
+    top_n = int(configs["review"]["review_priority"].get("top_drivers_shown", 5))
+    ranked = rank_by_impact(list(result.flagged), list(result.cross_field_findings), configs["review"], limit=top_n)
+    if ranked:
+        st.subheader("Top things to look at first")
+        item_word = "flag or finding" if len(ranked) == 1 else "flags/findings"
+        st.caption(
+            f"The {len(ranked)} {item_word} driving the priority above, strongest first. "
+            "Each links to its full detail further down this page."
+        )
+        for r in ranked:
+            if r.kind == "flag":
+                fi = r.flag
+                key = _flag_key(record_id, fi.flag, result.method)
+                q_label = f"Question {fi.flag.form_ref} — {schema[fi.instance.structured_field].label}"
+                badge = fi.band.label if fi.band else "Flagged"
+                materiality_bit = f" · {fi.materiality.label}" if fi.materiality else ""
+            else:
+                cf = r.cross_field
+                key = _cf_key(record_id, cf.finding)
+                q_label = cf.finding.description
+                badge = severity_label.get(cf.finding.severity, cf.finding.severity)
+                materiality_bit = f" · {cf.materiality.label}" if cf.materiality else ""
+            # The badge's text is real information (the same band/severity
+            # label shown on the full card below), not decoration, so unlike
+            # the dot/triangle/square icons elsewhere on this page it is NOT
+            # aria-hidden — a screen reader should announce it as part of
+            # this one link's accessible name, same as the visible text does
+            # for a sighted reviewer.
+            st.markdown(
+                f'<a class="impact-item" href="#{_anchor_id(key)}">'
+                f'<span class="impact-badge">{badge}</span>'
+                f'<span class="impact-text">{q_label}{materiality_bit}</span>'
+                f"</a>",
+                unsafe_allow_html=True,
+            )
+    elif priority is not None and priority.key == "none":
+        st.markdown("Nothing flagged on this submission — see sections 3-4 below for the full checks run.")
+
+    deid_clean = result.deid_report.is_clean
+    completeness_clean = not result.validation.findings
+    if deid_clean and completeness_clean:
+        expander_title = "Privacy and completeness checks — clean, nothing to review"
+    else:
+        issues = []
+        if not deid_clean:
+            issues.append(f"{result.deid_report.total_entities} personal-data item(s) removed")
+        if not completeness_clean:
+            issues.append(f"{len(result.validation.findings)} completeness finding(s)")
+        expander_title = "Privacy and completeness checks — " + ", ".join(issues)
+
+    with st.expander(expander_title, expanded=not (deid_clean and completeness_clean)):
+        col_deid, col_valid = st.columns(2)
+
+        with col_deid:
+            st.subheader("Personal data check")
+            report = result.deid_report
+            if report.is_clean:
+                st.markdown("No personal data was found in the free-text answers.")
+            else:
+                st.markdown(f"**{report.total_entities} item(s) removed** before anything else ran:")
+                for kind, count in sorted(report.entity_counts.items()):
+                    st.markdown(f"- {count} × {kind.replace('_', ' ')}")
+                st.caption("Only counts are shown here — never the values that were removed.")
+
+        with col_valid:
+            st.subheader("Form completeness")
+            findings = result.validation.findings
+            if not findings:
+                st.markdown("No completeness or contract issues found.")
+            else:
+                errors = [f for f in findings if f.severity is Severity.ERROR]
+                warnings = [f for f in findings if f.severity is Severity.WARNING]
+                if errors:
+                    st.markdown("**Breaks the data contract:**")
+                    for f in errors:
+                        st.markdown(f"- {f.message}")
+                if warnings:
+                    st.markdown("**Incomplete or off-route answers found on this submission:**")
+                    for f in warnings[:6]:
+                        st.markdown(f"- {f.message}")
+                    if len(warnings) > 6:
+                        st.caption(f"…and {len(warnings) - 6} more.")
+
 # =============================================================================
-# 4. Flags
+# 3. Flags
 # =============================================================================
-section4 = st.container(border=True)
-with section4:
-    st.header("4. Flags for review")
+section3 = st.container(border=True)
+with section3:
+    st.header("3. Flags for review")
 
     # WCAG 2.2: 4.1.3 status messages. This text changes whenever the flag count
     # or method changes, and screen readers announce an aria-live region's
@@ -732,7 +850,7 @@ with section4:
     )
 
     if not result.flagged:
-        # Not a `st.stop()` here: even with no tick-box-vs-text flags, section 5
+        # Not a `st.stop()` here: even with no tick-box-vs-text flags, section 4
         # below may still have a tick-box-vs-tick-box consistency finding to show,
         # and the decision log section always renders.
         st.markdown(
@@ -804,9 +922,10 @@ with section4:
             css_class = BAND_CSS_CLASS.get(band.label, "band-worth-a-look") if band else ""
             icon = BAND_ICON.get(band.label, "●") if band else ""
 
-            flag_key = f"{record.get('record_id')}::{flag.pair_id}::{flag.field_id}::{result.method}"
-            existing = _existing_decision(str(record.get("record_id")), flag.pair_id, flag.field_id)
+            flag_key = _flag_key(record_id, flag, result.method)
+            existing = _existing_decision(record_id, flag.pair_id, flag.field_id)
 
+            st.markdown(f'<div id="{_anchor_id(flag_key)}"></div>', unsafe_allow_html=True)
             with st.container(border=True):
                 if band:
                     st.markdown(
@@ -855,7 +974,7 @@ with section4:
                             decision_log.record(
                                 ReviewDecision(
                                     decision_id=uuid.uuid4().hex,
-                                    record_id=str(record.get("record_id")),
+                                    record_id=record_id,
                                     pair_id=flag.pair_id,
                                     field_id=flag.field_id,
                                     method=result.method,
@@ -873,7 +992,7 @@ with section4:
                             decision_log.record(
                                 ReviewDecision(
                                     decision_id=uuid.uuid4().hex,
-                                    record_id=str(record.get("record_id")),
+                                    record_id=record_id,
                                     pair_id=flag.pair_id,
                                     field_id=flag.field_id,
                                     method=result.method,
@@ -888,35 +1007,35 @@ with section4:
                             st.rerun()
 
 # =============================================================================
-# 5. Tick-box vs tick-box consistency findings
+# 4. Tick-box vs tick-box consistency findings
 #
-# Same idea as section 4, but comparing two structured answers against each
+# Same idea as section 3, but comparing two structured answers against each
 # other instead of an answer against its own free-text justification (see
 # src/models/cross_field.py). These have no confidence band — a boolean
 # condition either fired or it did not, so severity (authored per-check in
 # config, not computed) is shown instead.
 #
 # Decisions on these findings are recorded through the same DecisionLog /
-# ReviewDecision machinery as section 4, reusing its `pair_id` field for the
+# ReviewDecision machinery as section 3, reusing its `pair_id` field for the
 # check's id and `field_id` for the touched fields (joined), rather than
 # adding a parallel log for what is, for audit purposes, the same kind of
 # event: a reviewer looked at a flagged inconsistency and made a call on it.
 # =============================================================================
-section5 = st.container(border=True)
-with section5:
-    st.header("5. " + configs["review"]["cross_field"]["section_heading"])
+section4 = st.container(border=True)
+with section4:
+    st.header("4. " + configs["review"]["cross_field"]["section_heading"])
     st.caption(configs["review"]["cross_field"]["section_intro"])
 
     if not result.cross_field_findings:
         st.markdown("No tick-box consistency findings for this submission.")
     else:
-        severity_label = configs["review"]["cross_field"]["severity_label"]
         for cf in result.cross_field_findings:
             finding = cf.finding
             cf_pair_id = finding.check_id
             cf_field_id = ",".join(finding.fields)
-            cf_key = f"{record.get('record_id')}::{cf_pair_id}::{cf_field_id}::cross_field"
-            existing_cf = _existing_decision(str(record.get("record_id")), cf_pair_id, cf_field_id)
+            cf_key = _cf_key(record_id, finding)
+            st.markdown(f'<div id="{_anchor_id(cf_key)}"></div>', unsafe_allow_html=True)
+            existing_cf = _existing_decision(record_id, cf_pair_id, cf_field_id)
 
             with st.container(border=True):
                 st.markdown(
@@ -965,7 +1084,7 @@ with section5:
                             decision_log.record(
                                 ReviewDecision(
                                     decision_id=uuid.uuid4().hex,
-                                    record_id=str(record.get("record_id")),
+                                    record_id=record_id,
                                     pair_id=cf_pair_id,
                                     field_id=cf_field_id,
                                     method="cross_field",
@@ -983,7 +1102,7 @@ with section5:
                             decision_log.record(
                                 ReviewDecision(
                                     decision_id=uuid.uuid4().hex,
-                                    record_id=str(record.get("record_id")),
+                                    record_id=record_id,
                                     pair_id=cf_pair_id,
                                     field_id=cf_field_id,
                                     method="cross_field",
@@ -998,12 +1117,12 @@ with section5:
                             st.rerun()
 
 # =============================================================================
-# 6. Decision log for this record
+# 5. Decision log for this record
 # =============================================================================
-section6 = st.container(border=True)
-with section6:
-    st.header("6. Decisions recorded for this submission")
-    record_decisions = decision_log.for_record(str(record.get("record_id")))
+section5 = st.container(border=True)
+with section5:
+    st.header("5. Decisions recorded for this submission")
+    record_decisions = decision_log.for_record(record_id)
     if not record_decisions:
         st.markdown("No decisions recorded yet for this submission.")
     else:
