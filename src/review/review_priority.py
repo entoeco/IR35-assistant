@@ -51,7 +51,7 @@ from typing import TYPE_CHECKING, Any, Mapping, Sequence
 if TYPE_CHECKING:
     from src.review.assess import CrossFieldFindingWithMateriality, FlaggedInstance
 
-__all__ = ["ReviewPriority", "review_priority_for"]
+__all__ = ["ReviewPriority", "RankedItem", "review_priority_for", "rank_by_impact"]
 
 
 @dataclass(frozen=True)
@@ -76,6 +76,42 @@ def _level(levels: Mapping[str, Mapping[str, Any]], key: str) -> ReviewPriority:
     return ReviewPriority(
         key=str(entry["key"]), label=str(entry["label"]), description=str(entry["description"])
     )
+
+
+def _materiality_weight(
+    materiality: Any, materiality_weight: Mapping[str, Any], default_weight: float
+) -> float:
+    if materiality is None:
+        return default_weight
+    return float(materiality_weight.get(materiality.label, default_weight))
+
+
+def _flag_impact(fi: "FlaggedInstance", scoring: Mapping[str, Any]) -> tuple[float, bool]:
+    """One flag's (impact_score, is_gate) -- the exact per-item contribution
+    ``review_priority_for`` sums over, factored out so a caller that wants to
+    rank individual items (see :func:`rank_by_impact`) uses the same numbers
+    the aggregate is built from rather than a second, divergent notion of
+    "how much this matters"."""
+    if fi.materiality is not None and fi.materiality.is_gate:
+        return float("inf"), True
+    band_weight = scoring["band_weight"]
+    default_weight = float(scoring.get("default_materiality_weight", 1.0))
+    b = float(band_weight.get(fi.band.label, 1)) if fi.band is not None else 1.0
+    m = _materiality_weight(fi.materiality, scoring["materiality_weight"], default_weight)
+    return b * m, False
+
+
+def _cross_field_impact(
+    cf: "CrossFieldFindingWithMateriality", scoring: Mapping[str, Any]
+) -> tuple[float, bool]:
+    """Same idea as :func:`_flag_impact`, for a cross-field finding."""
+    if cf.materiality is not None and cf.materiality.is_gate:
+        return float("inf"), True
+    severity_weight = scoring["cross_field_severity_weight"]
+    default_weight = float(scoring.get("default_materiality_weight", 1.0))
+    s = float(severity_weight.get(cf.finding.severity, 1))
+    m = _materiality_weight(cf.materiality, scoring["materiality_weight"], default_weight)
+    return s * m, False
 
 
 def review_priority_for(
@@ -107,39 +143,93 @@ def review_priority_for(
     cfg = review_config["review_priority"]
     levels = {lvl["key"]: lvl for lvl in cfg["levels"]}
     scoring = cfg["scoring"]
-    band_weight = scoring["band_weight"]
-    severity_weight = scoring["cross_field_severity_weight"]
-    materiality_weight = scoring["materiality_weight"]
-    default_weight = float(scoring.get("default_materiality_weight", 1.0))
 
     if not flagged and not cross_field_findings:
         return _level(levels, "none")
 
     score = 0.0
     for fi in flagged:
-        if fi.materiality is not None and fi.materiality.is_gate:
+        item_score, is_gate = _flag_impact(fi, scoring)
+        if is_gate:
             return _level(levels, "urgent")
-        b = float(band_weight.get(fi.band.label, 1)) if fi.band is not None else 1.0
-        m = (
-            float(materiality_weight.get(fi.materiality.label, default_weight))
-            if fi.materiality is not None
-            else default_weight
-        )
-        score += b * m
+        score += item_score
 
     for cf in cross_field_findings:
-        if cf.materiality is not None and cf.materiality.is_gate:
+        item_score, is_gate = _cross_field_impact(cf, scoring)
+        if is_gate:
             return _level(levels, "urgent")
-        s = float(severity_weight.get(cf.finding.severity, 1))
-        m = (
-            float(materiality_weight.get(cf.materiality.label, default_weight))
-            if cf.materiality is not None
-            else default_weight
-        )
-        score += s * m
+        score += item_score
 
     for threshold in scoring["thresholds"]:
         if score >= float(threshold["min_score"]):
             return _level(levels, str(threshold["key"]))
 
     return _level(levels, "light")
+
+
+@dataclass(frozen=True)
+class RankedItem:
+    """One flag or cross-field finding, carrying how much it drove the
+    submission's review priority.
+
+    Lets a reviewer see *which questions* are behind a "Close review" or
+    "Urgent review" result, not just the aggregate level -- without inventing
+    a second notion of importance: ``impact_score`` (and the gate override,
+    via ``is_gate``) is read directly from the same per-item numbers
+    :func:`review_priority_for` sums over.
+
+    Attributes:
+        kind: ``"flag"`` or ``"cross_field"`` -- which of ``flag``/
+            ``cross_field`` is populated.
+        flag: Set when ``kind == "flag"``.
+        cross_field: Set when ``kind == "cross_field"``.
+        impact_score: This item's contribution to the aggregate score.
+            ``float("inf")`` for a gate item (see ``is_gate``) -- it is not a
+            meaningful magnitude to display, only an ordering device.
+        is_gate: True if this item alone carries gate-tier materiality, the
+            same override that sends the whole submission straight to
+            "Urgent review" regardless of everything else.
+    """
+
+    kind: str
+    flag: "FlaggedInstance | None"
+    cross_field: "CrossFieldFindingWithMateriality | None"
+    impact_score: float
+    is_gate: bool
+
+
+def rank_by_impact(
+    flagged: Sequence["FlaggedInstance"],
+    cross_field_findings: Sequence["CrossFieldFindingWithMateriality"],
+    review_config: Mapping[str, Any],
+    limit: int | None = None,
+) -> list[RankedItem]:
+    """Rank every flag and cross-field finding by its contribution to the
+    submission's review priority, strongest first.
+
+    Gate items sort first (ties broken by original order), then everything
+    else by ``impact_score`` descending. This is a *view* onto numbers
+    ``review_priority_for`` already computes -- it never reads a record,
+    a raw score, or which way an answer leans, for the same reason that
+    function does not.
+
+    Args:
+        flagged: As passed to :func:`review_priority_for`.
+        cross_field_findings: As passed to :func:`review_priority_for`.
+        review_config: Parsed ``config/review.yaml``.
+        limit: If given, only the top ``limit`` items are returned.
+
+    Returns:
+        Ranked items, strongest driver first.
+    """
+    scoring = review_config["review_priority"]["scoring"]
+    ranked: list[RankedItem] = []
+    for fi in flagged:
+        item_score, is_gate = _flag_impact(fi, scoring)
+        ranked.append(RankedItem(kind="flag", flag=fi, cross_field=None, impact_score=item_score, is_gate=is_gate))
+    for cf in cross_field_findings:
+        item_score, is_gate = _cross_field_impact(cf, scoring)
+        ranked.append(RankedItem(kind="cross_field", flag=None, cross_field=cf, impact_score=item_score, is_gate=is_gate))
+
+    ranked.sort(key=lambda r: (r.is_gate, r.impact_score), reverse=True)
+    return ranked[:limit] if limit is not None else ranked
