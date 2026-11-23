@@ -284,9 +284,15 @@ def coerce_types(record: dict[str, Any], schema) -> tuple[dict[str, Any], list[s
     return out, notes
 
 
-def extract_responses(xlsx_path: Path) -> tuple[list[dict[str, Any]], dict[int, Any], list[str]]:
-    """Read every response row. Returns (raw_records, id_by_row_index, unmapped_headers)."""
-    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+def extract_responses(xlsx_source: Any) -> tuple[list[dict[str, Any]], dict[int, Any], list[str]]:
+    """Read every response row. Returns (raw_records, id_by_row_index, unmapped_headers).
+
+    ``xlsx_source`` is anything ``openpyxl.load_workbook`` accepts: a path, or
+    a file-like object such as the in-memory buffer Streamlit's file
+    uploader hands you -- so the reviewer app can convert an upload without
+    writing a temporary file to disk.
+    """
+    wb = openpyxl.load_workbook(xlsx_source, data_only=True)
     ws = wb[SHEET_NAME] if SHEET_NAME in wb.sheetnames else wb[wb.sheetnames[0]]
 
     headers = [ws.cell(row=1, column=c).value for c in range(1, ws.max_column + 1)]
@@ -322,10 +328,18 @@ def extract_responses(xlsx_path: Path) -> tuple[list[dict[str, Any]], dict[int, 
     return records, ids, unmapped
 
 
-def convert_all(xlsx_path: Path) -> list[tuple[dict[str, Any], list[str]]]:
-    """Convert every response row. Returns a list of (record, notes)."""
+def convert_all(
+    xlsx_source: Any, fallback_name: str = "upload"
+) -> list[tuple[dict[str, Any], list[str]]]:
+    """Convert every response row. Returns a list of (record, notes).
+
+    ``xlsx_source`` -- see ``extract_responses``. ``fallback_name`` is used to
+    build a record_id only for the (expected not to happen on a real export)
+    case where there is no "Id" column to key off; pass something meaningful
+    (e.g. the uploaded filename's stem) when ``xlsx_source`` is not a path.
+    """
     schema = load_schema()
-    records, ids, unmapped = extract_responses(xlsx_path)
+    records, ids, unmapped = extract_responses(xlsx_source)
     if unmapped:
         print(
             "warning: these columns were not recognised and were ignored:\n  "
@@ -337,7 +351,7 @@ def convert_all(xlsx_path: Path) -> list[tuple[dict[str, Any], list[str]]]:
     for i, raw_record in enumerate(records):
         record, notes = coerce_types(raw_record, schema)
         ms_id = ids.get(i)
-        record_id = f"ESQ-MSFORMS-{ms_id}" if ms_id is not None else f"ESQ-MSFORMS-{xlsx_path.stem}-{i + 1}"
+        record_id = f"ESQ-MSFORMS-{ms_id}" if ms_id is not None else f"ESQ-MSFORMS-{fallback_name}-{i + 1}"
         record = {"record_id": record_id, **record}
         results.append((record, notes))
     return results
@@ -381,7 +395,7 @@ def main() -> int:
         print(f"error: {args.xlsx_path} does not exist", file=sys.stderr)
         return 1
 
-    converted = convert_all(args.xlsx_path)
+    converted = convert_all(args.xlsx_path, fallback_name=args.xlsx_path.stem)
     if not converted:
         print("error: no response rows found in this export", file=sys.stderr)
         return 1
